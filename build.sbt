@@ -1,8 +1,10 @@
 lazy val root = (project in file(".")).
     settings(
+        organization := "com.giyeok",
         name := "passzero",
-        version := "0.1",
-        scalaVersion := "2.12.1"
+        version := "0.0.1",
+        scalaVersion := "2.12.1",
+        conflictManager := ConflictManager.latestTime
     )
 
 resolvers += "swt-repo" at "http://maven-eclipse.github.io/maven"
@@ -22,6 +24,14 @@ libraryDependencies += {
 }
 
 libraryDependencies += "swt" % "jface" % "3.0.1"
+
+// ===== Test =====
+libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.1" % "test"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test"
+
+// https://mvnrepository.com/artifact/org.apache.hbase/hbase-testing-util
+libraryDependencies += "org.apache.hbase" % "hbase-testing-util" % "1.2.4" % "test"
+
 
 javaOptions in run := {
     println(sys.props("os.name"))
