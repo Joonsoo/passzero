@@ -4,6 +4,13 @@ import java.util.Base64
 
 object ByteArrayUtil {
 
+    def fill(length: Int, value: Int): Array[Byte] = {
+        assert((value.toByte.toInt & 0xff) == value)
+        val a = new Array[Byte](length)
+        a.indices foreach { a(_) = value.toByte }
+        a
+    }
+
     implicit class Implicit(array: Array[Byte]) {
         def toHexString: String =
             (array map { x => f"$x%02x" }).mkString
@@ -20,5 +27,10 @@ object ByteArrayUtil {
             }
             newArray
         }
+
+        def identical(other: Array[Byte]): Boolean =
+            if (array.length != other.length) false else {
+                (array zip other) forall { x => x._1 == x._2 }
+            }
     }
 }
