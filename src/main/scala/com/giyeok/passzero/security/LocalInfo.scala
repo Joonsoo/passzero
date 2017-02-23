@@ -4,7 +4,7 @@ case class LocalInfo(pwSalt: Array[Byte], localKey: Array[Byte], localIv: Array[
     assert(pwSalt.length == 32)
     assert(localKey.length == 32)
     assert(localIv.length == 16)
-    def toReadable: String = {
+    def toAlphaDigits: String = {
         val array = pwSalt ++ localKey ++ localIv
         assert(array.length == 80)
         // 80 bytes = 640 bits
@@ -17,7 +17,7 @@ case class LocalInfo(pwSalt: Array[Byte], localKey: Array[Byte], localIv: Array[
         assert(grouped forall { _.length == 5 })
         assert(grouped.length == 16)
 
-        val rawString = (grouped flatMap { y =>
+        val string = (grouped flatMap { y =>
             val x = y map { _.toInt & 0xff }
             val indices = Seq(
                 x(0) >> 3,
@@ -32,10 +32,12 @@ case class LocalInfo(pwSalt: Array[Byte], localKey: Array[Byte], localIv: Array[
             // println(indices)
             indices map { chars(_) }
         }).mkString
-        assert(rawString.length == 128)
-
-        rawString.grouped(8) mkString "-"
+        assert(string.length == 128)
+        string
     }
+
+    def toReadable: String =
+        toAlphaDigits.grouped(8) mkString "-"
 
     // LocalInfo를 저장할 때는 비밀번호로 한 번 더 암호화 해서
 }

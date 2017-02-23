@@ -35,7 +35,7 @@ object Security {
         skf.generateSecret(spec).getEncoded
     }
 
-    object AES256 {
+    object AES256CBC {
         def encode(src: Array[Byte], initialVector: Array[Byte], key: Array[Byte]): Array[Byte] = {
             val secureKey = new SecretKeySpec(key, "AES")
             val c = Cipher.getInstance("AES/CBC/PKCS5Padding")
@@ -53,6 +53,24 @@ object Security {
         }
     }
 
+    object AES256EBC {
+        def encode(src: Array[Byte], key: Array[Byte]): Array[Byte] = {
+            val secureKey = new SecretKeySpec(key, "AES")
+            val c = Cipher.getInstance("AES/EBC/PKCS5Padding")
+            c.init(Cipher.ENCRYPT_MODE, secureKey)
+
+            c.doFinal(src)
+        }
+
+        def decode(src: Array[Byte], key: Array[Byte]): Array[Byte] = {
+            val secureKey = new SecretKeySpec(key, "AES")
+            val c = Cipher.getInstance("AES/EBC/PKCS5Padding")
+            c.init(Cipher.DECRYPT_MODE, secureKey)
+
+            c.doFinal(src)
+        }
+    }
+
     private def generateSecureKey(password: String, pwSalt: Array[Byte], localKey: Array[Byte]): Array[Byte] = {
         val pwHash = generatePasswordHash(pwSalt, password, pbkdf2Iterations)
         val halfPwHash = (pwHash take 32) xor (pwHash drop 32)
@@ -62,11 +80,11 @@ object Security {
 
     def encodeText(password: String, localInfo: LocalInfo, text: String): Array[Byte] = {
         val secureKey = generateSecureKey(password, localInfo.pwSalt, localInfo.localKey)
-        AES256.encode(text.getBytes("UTF-8"), localInfo.localIv, secureKey)
+        AES256CBC.encode(text.getBytes("UTF-8"), localInfo.localIv, secureKey)
     }
 
     def decodeText(password: String, localInfo: LocalInfo, source: Array[Byte]): String = {
         val secureKey = generateSecureKey(password, localInfo.pwSalt, localInfo.localKey)
-        new String(AES256.decode(source, localInfo.localIv, secureKey), "UTF-8")
+        new String(AES256CBC.decode(source, localInfo.localIv, secureKey), "UTF-8")
     }
 }
