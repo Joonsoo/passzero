@@ -10,7 +10,7 @@ import com.giyeok.passzero.ByteArrayUtil.Implicit
 
 object Security {
     def secureRandom(length: Int): Array[Byte] = {
-        val sr = SecureRandom.getInstance("SHA1PRNG")
+        val sr = SecureRandom.getInstance()
         val random = new Array[Byte](length)
         sr.nextBytes(random)
         random
