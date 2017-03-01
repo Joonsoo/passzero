@@ -13,10 +13,10 @@ object Main {
         val session = new Session(password, localKeys, storageProfile.createSession())
 
         val localSave = LocalInfo.save(password, session.localInfo)
-        localSave.toHexMatrix foreach println
+        localSave.printHexMatrix()
 
         val localSave2 = LocalInfo.save(password, session.localInfo)
-        localSave2.toHexMatrix foreach println
+        localSave2.printHexMatrix()
 
         val restoredLocalInfo = LocalInfo.load(password, localSave)
         assert(localKeys identical restoredLocalInfo._2.localKeys)

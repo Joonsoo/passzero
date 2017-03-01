@@ -5,6 +5,12 @@ import java.util.Base64
 object ByteArrayUtil {
     val charsetName = "UTF-8"
 
+    def hexLine(hex: Seq[Byte]): String =
+        hex map { x => f"$x%02x" } grouped 4 map { _ mkString " " } mkString "  "
+
+    val hexMatrixTitle: String =
+        hexLine((0 until 16) map { _.toByte })
+
     def fill(length: Int, value: Int): Array[Byte] = {
         assert((value.toByte.toInt & 0xff) == value)
         val a = new Array[Byte](length)
@@ -26,8 +32,26 @@ object ByteArrayUtil {
 
         def toHexMatrix: Seq[String] = {
             (array.grouped(16) map { line =>
-                (line map { x => f"$x%02x" }) mkString " "
+                hexLine(line)
             }).toSeq
+        }
+
+        def printHexMatrix(title: Boolean = true): Unit = {
+            if (title) {
+                val lineIndexLength = 4
+                println("=" * ((lineIndexLength + 1) + hexMatrixTitle.length))
+                println(" " * (lineIndexLength + 1) + hexMatrixTitle)
+                println("-" * ((lineIndexLength + 1) + hexMatrixTitle.length))
+                Stream.from(0, 16) zip this.toHexMatrix foreach { pair =>
+                    val (startPoint, line) = pair
+                    val startPointHex = startPoint.toHexString
+                    val padding = "0" * (lineIndexLength - startPointHex.length)
+                    println(f"$padding$startPointHex $line")
+                }
+                println("=" * ((lineIndexLength + 1) + hexMatrixTitle.length))
+            } else {
+                this.toHexMatrix foreach println
+            }
         }
 
         def toBase64: String =
