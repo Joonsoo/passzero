@@ -9,6 +9,10 @@ lazy val root = (project in file(".")).
 
 resolvers += "swt-repo" at "http://maven-eclipse.github.io/maven"
 
+libraryDependencies += "org.json4s" %% "json4s-native" % "3.5.0"
+
+// TODO google drive api
+
 libraryDependencies += {
     val os = (sys.props("os.name"), sys.props("os.arch")) match {
         case ("Linux", "amd64" | "x86_64") => "gtk.linux.x86_64"

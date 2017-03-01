@@ -16,12 +16,20 @@ object ByteArrayUtil {
         def toBytes: Array[Byte] = string.getBytes(charsetName)
     }
 
+    implicit class ImplicitLong(long: Long) {
+        def toBytes: Array[Byte] = ???
+    }
+
     implicit class Implicit(array: Array[Byte]) {
         def toHexString: String =
             (array map { x => f"$x%02x" }).mkString
 
         def toBase64: String =
             Base64.getEncoder.encodeToString(array)
+
+        def asLong: Long = {
+            ???
+        }
 
         def asString: String =
             new String(array, charsetName)
