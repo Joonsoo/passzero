@@ -13,5 +13,7 @@ class MemoryStorageSession(val profile: MemoryStorageProfile) extends StorageSes
 
     override def putContent(path: Path, content: Array[Byte]): Unit = ???
 
-    override def delete(path: Path): Boolean = ???
+    override def delete(path: Path, recursive: Boolean): Boolean = ???
+
+    override def mkdir(path: Path, recursive: Boolean): Unit = ???
 }
