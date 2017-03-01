@@ -3,6 +3,7 @@ package com.giyeok.passzero
 import java.util.Base64
 
 object ByteArrayUtil {
+    val charsetName = "UTF-8"
 
     def fill(length: Int, value: Int): Array[Byte] = {
         assert((value.toByte.toInt & 0xff) == value)
@@ -11,12 +12,19 @@ object ByteArrayUtil {
         a
     }
 
+    implicit class ImplicitString(string: String) {
+        def toBytes: Array[Byte] = string.getBytes(charsetName)
+    }
+
     implicit class Implicit(array: Array[Byte]) {
         def toHexString: String =
             (array map { x => f"$x%02x" }).mkString
 
         def toBase64: String =
             Base64.getEncoder.encodeToString(array)
+
+        def asString: String =
+            new String(array, charsetName)
 
         def xor(other: Array[Byte]): Array[Byte] = {
             val newArray = new Array[Byte](Math.max(array.length, other.length))
