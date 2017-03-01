@@ -1,5 +1,6 @@
 package com.giyeok.passzero
 
+import com.giyeok.passzero.utils.ByteArrayUtil
 import org.scalatest.FlatSpec
 
 class LocalKeysTest extends FlatSpec {

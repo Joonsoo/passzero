@@ -1,4 +1,4 @@
-package com.giyeok.passzero
+package com.giyeok.passzero.utils
 
 import java.util.Base64
 
@@ -24,12 +24,23 @@ object ByteArrayUtil {
         def toHexString: String =
             (array map { x => f"$x%02x" }).mkString
 
+        def toHexMatrix: Seq[String] = {
+            (array.grouped(16) map { line =>
+                (line map { x => f"$x%02x" }) mkString " "
+            }).toSeq
+        }
+
         def toBase64: String =
             Base64.getEncoder.encodeToString(array)
 
-        def asLong: Long = {
-            ???
+        def asLong(offset: Int): Long = {
+            (array(offset).toLong << 56) | (array(offset + 1).toLong << 48) |
+                (array(offset + 2).toLong << 40) | (array(offset + 3).toLong << 32) |
+                (array(offset + 4).toLong << 24) | (array(offset + 5).toLong << 16) |
+                (array(offset + 6).toLong << 8) | array(offset + 7).toLong
         }
+
+        def asLong: Long = asLong(0) ensuring array.length == 8
 
         def asString: String =
             new String(array, charsetName)

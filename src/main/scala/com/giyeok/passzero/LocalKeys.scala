@@ -1,6 +1,6 @@
 package com.giyeok.passzero
 
-import com.giyeok.passzero.ByteArrayUtil._
+import com.giyeok.passzero.utils.ByteArrayUtil._
 
 object LocalKeys {
     val encodingChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

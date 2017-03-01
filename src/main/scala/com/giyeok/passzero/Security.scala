@@ -17,6 +17,7 @@ object Security {
 
     object AES256CBC {
         def encode(src: Array[Byte], key: Array[Byte], initialVector: Array[Byte]): Array[Byte] = {
+            assert(key.length == 32 && initialVector.length == 16)
             val secureKey = new SecretKeySpec(key, "AES")
             val c = Cipher.getInstance("AES/CBC/PKCS5Padding")
             c.init(Cipher.ENCRYPT_MODE, secureKey, new IvParameterSpec(initialVector))

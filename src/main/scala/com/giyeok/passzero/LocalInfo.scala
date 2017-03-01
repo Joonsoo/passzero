@@ -3,10 +3,14 @@ package com.giyeok.passzero
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import com.giyeok.passzero.ByteArrayUtil._
+import java.util.Date
+import scala.concurrent.duration._
+import com.giyeok.passzero.utils.ByteArrayUtil._
 import com.giyeok.passzero.Security.AES256CBC
 import com.giyeok.passzero.Security.PasswordHash
 import com.giyeok.passzero.storage.StorageProfile
+import com.giyeok.passzero.utils.ByteBuf
+import com.giyeok.passzero.utils.ByteReader
 
 object LocalInfo {
     // LocalInfo 파일 구조:
@@ -19,17 +23,40 @@ object LocalInfo {
     // 그 다음 16바이트는 LocalInfo용 initial vector
     //  - LocalInfo의 나머지 내용을 해석할 때는 위의 salt와 비밀번호로 생성된 키 + 이 iv를 사용한다
 
-    // 그 다음 (password) + (LocalInfo용 salt)로 만든 해시를 키로, (LocalInfo용 iv)를 iv로 하는 AES256CBC 로 암호화된 LocalKeys.toBytes
-    //  - 원본은 80바이트, 암호화된 사이즈는 96바이트
-    // 그 다음 storageProfile 정보를 Array[Byte]를 위의 localKeys와 동일한 키/iv를 이용해 AES256CBC로 암호화한 내용
-    //  - storageProfile 정보는 null-ended storageType과 storageProfile이 정의한 내용으로 구성된다
-    //  - 크기 확정 불가
+    // 그 다음에는 80바이트의 LocalInfo.toBytes + storageName + null byte + storageProfileInfo 의 정보를
+    // (password) + (LocalInfo용 salt)로 만든 해시를 키로, (LocalInfo용 iv)를 iv로 하는 AES256CBC 로 암호해서 저장
+    //  - 크기는 storageProfileInfo때문에 확정 불가
 
+    // save는 호출될 때마다 random salt와 iv를 생성하기 때문에 같은 인자를 줘도 결과가 항상 다르다
     def save(password: String, localInfo: LocalInfo): Array[Byte] = {
         // localInfoSalt랑 localInfoIv는 여기서 랜덤하게 생성
+        // LocalInfo 파일의 timestamp는 이 메소드가 실행되는 시점의 실제 타임스탬프로 하면 됨
+        val timestamp = Timestamp.current
+
+        val buf = new ByteBuf(120)
+        buf.writeBytes(Seq[Byte]('G', 'Y', 'P', 'Z'))
+        buf.writeBytes(Seq[Byte](0, 1))
+        buf.writeLong(timestamp.date)
+
+        val (pwHash, pwSalt) = Security.PasswordHash.generateHashAndSalt(password)
+        buf.writeBytes(pwSalt)
+        val iv = Security.secureRandom(16)
+        buf.writeBytes(iv)
+
+        val localInfoEncodeKey = pwHash take 32
+
+        val contentBuf = new ByteBuf(100)
         val rawLocalKeysBytes = localInfo.localKeys.toBytes
         val rawStorageProfileBytes = localInfo.storageProfile.toBytes
-        ???
+        contentBuf.writeBytes(rawLocalKeysBytes)
+        contentBuf.writeString(localInfo.storageProfile.name)
+        contentBuf.writeByte(0)
+        contentBuf.writeBytes(rawStorageProfileBytes)
+
+        val encodedContent = Security.AES256CBC.encode(contentBuf.finish(), localInfoEncodeKey, iv)
+        buf.writeBytes(encodedContent)
+
+        buf.finish()
     }
 
     def save(password: String, localInfo: LocalInfo, dest: File): Unit = {
@@ -47,26 +74,29 @@ object LocalInfo {
 
     case class LoadException(msg: String) extends Exception(msg)
 
-    def load(password: String, input: Array[Byte]): LocalInfo = {
-        if (input(0) == 'G' && input(1) == 'Y' && input(2) == 'P' && input(3) == 'Z') {
-            val versionNum = (input(4), input(5))
+    def load(password: String, input: Array[Byte]): (Timestamp, LocalInfo) = {
+        val reader = new ByteReader(input)
+        if (reader.readBytes(4).toSeq == Seq[Byte]('G', 'Y', 'P', 'Z')) {
+            val versionNum = reader.readBytes(2).toSeq
             versionNum match {
-                case (0, 1) =>
-                    val timestamp = input.slice(6, 6 + 8).asLong
-                    val localInfoSalt = input.slice(14, 14 + 32)
-                    val localInfoIv = input.slice(44, 44 + 16)
+                case Seq(0, 1) =>
+                    val timestamp = Timestamp(reader.readLong)
+                    val localInfoSalt = reader.readBytes(32)
+                    val localInfoIv = reader.readBytes(16)
                     assert(localInfoSalt.length == 32 && localInfoIv.length == 16)
-                    val localInfoKey = PasswordHash.generateHash(localInfoSalt, password)
+                    val localInfoKey = PasswordHash.generateHash(localInfoSalt, password) take 32
 
-                    val encodedLocalKeys = input.slice(60, 60 + 96)
-                    val localKeysBytes = AES256CBC.decode(encodedLocalKeys, localInfoKey, localInfoIv)
+                    val encodedContent = reader.readRest()
+                    val content = AES256CBC.decode(encodedContent, localInfoKey, localInfoIv)
+
+                    val (localKeysBytes, storageProfileBytes) = content splitAt 80
+
                     val localKeys = LocalKeys.fromBytes(localKeysBytes)
+                    val (storageProfileTypeBytes, storageProfileContent) = storageProfileBytes span { _ != 0 }
+                    val storageProfileType = storageProfileTypeBytes.asString
+                    val storageProfile = StorageProfile.fromBytes(storageProfileType, storageProfileContent.tail)
 
-                    val encodedStorageProfile = input.slice(156, input.length)
-                    val storageProfileBytes = AES256CBC.decode(encodedStorageProfile, localInfoKey, localInfoIv)
-                    val (storageProfileTypeBytes, storageProfileContent) = storageProfileBytes span { _ == 0 }
-                    val storageProfile = StorageProfile.fromBytes(storageProfileTypeBytes.asString, storageProfileContent)
-                    new LocalInfo(timestamp, localKeys, storageProfile)
+                    (timestamp, new LocalInfo(localKeys, storageProfile))
 
                 case _ =>
                     throw LoadException(s"unknown version number: $versionNum")
@@ -76,7 +106,7 @@ object LocalInfo {
         }
     }
 
-    def load(password: String, src: File): LocalInfo = {
+    def load(password: String, src: File): (Timestamp, LocalInfo) = {
         if (!src.isFile) {
             // TODO 오류 처리
             ???
@@ -105,4 +135,12 @@ object LocalInfo {
     }
 }
 
-class LocalInfo(val timestamp: Long, val localKeys: LocalKeys, val storageProfile: StorageProfile)
+object Timestamp {
+    def current = Timestamp(System.currentTimeMillis())
+}
+case class Timestamp(date: Long) extends AnyVal {
+    def -(other: Timestamp): Duration = (date - other.date).millis
+    def toDate: Date = new Date(date)
+}
+
+class LocalInfo(val localKeys: LocalKeys, val storageProfile: StorageProfile)
