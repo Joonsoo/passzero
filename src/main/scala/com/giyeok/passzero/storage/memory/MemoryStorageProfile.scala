@@ -2,7 +2,6 @@ package com.giyeok.passzero.storage.memory
 
 import com.giyeok.passzero.storage.StorageProfile
 import com.giyeok.passzero.storage.StorageProfileSpec
-import com.giyeok.passzero.storage.StorageSession
 import com.giyeok.passzero.utils.ByteArrayUtil._
 import org.json4s.DefaultFormats
 
@@ -21,6 +20,6 @@ class MemoryStorageProfile extends StorageProfile {
 
     lazy val toBytes: Array[Byte] = MemoryStorageProfile.specString.toBytes
 
-    def createSession(): StorageSession =
+    def createSession(): MemoryStorageSession =
         new MemoryStorageSession(this)
 }

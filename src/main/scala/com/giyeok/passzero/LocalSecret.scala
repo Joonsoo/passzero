@@ -2,17 +2,17 @@ package com.giyeok.passzero
 
 import com.giyeok.passzero.utils.ByteArrayUtil._
 
-object LocalKeys {
+object LocalSecret {
     val encodingChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     assert(encodingChars.length >= 32)
 
-    def fromBytes(bytes: Seq[Byte]): LocalKeys = {
-        assert(bytes.length == 80)
-        LocalKeys(bytes.slice(0, 32).toArray, bytes.slice(32, 64).toArray, bytes.slice(64, 80).toArray)
+    def fromBytes(bytes: Seq[Byte]): LocalSecret = {
+        assert(bytes.length == 64)
+        LocalSecret(bytes.slice(0, 32).toArray, bytes.slice(32, 64).toArray)
     }
 
-    def fromAlphaDigits(string: String): LocalKeys = {
-        assert(string.length == 128)
+    def fromAlphaDigits(string: String): LocalSecret = {
+        assert(string.length == 104)
         // 8글자에서 5바이트씩 나옴
         val totalBytes: Seq[Byte] = (string.grouped(8) flatMap { g =>
             val idx = g.toCharArray map { encodingChars.indexOf(_) }
@@ -25,33 +25,32 @@ object LocalKeys {
                 ((idx(6) & 0x7) << 5) | idx(7)
             )
         }).toSeq map { _.toByte }
-        fromBytes(totalBytes)
+        assert(totalBytes.length == 65 && totalBytes.last == 0)
+        fromBytes(totalBytes take 64)
     }
 
-    def generateRandomLocalInfo(): LocalKeys = {
+    def generateRandomLocalInfo(): LocalSecret = {
         import Security.secureRandom
-        LocalKeys(secureRandom(32), secureRandom(32), secureRandom(16))
+        LocalSecret(secureRandom(32), secureRandom(32))
     }
 }
 
-case class LocalKeys(pwSalt: Array[Byte], localKey: Array[Byte], localIv: Array[Byte]) {
+case class LocalSecret(pwSalt: Array[Byte], localKey: Array[Byte]) {
     assert(pwSalt.length == 32)
     assert(localKey.length == 32)
-    assert(localIv.length == 16)
 
     def toBytes: Array[Byte] = {
-        val array = pwSalt ++ localKey ++ localIv
-        array ensuring array.length == 80
+        val array = pwSalt ++ localKey
+        array ensuring array.length == 64
     }
 
     def toAlphaDigits: String = {
-        // 80 bytes = 640 bits
-        // 5bit = 32 chars, 640 / 5 = 128
+        val bytes65: Array[Byte] = toBytes :+ 0.toByte
 
-        val grouped = this.toBytes.grouped(5).toSeq
+        val grouped = bytes65.grouped(5).toSeq
         // 5바이트씩 쪼개면 한 덩어리에서 8글자가 나옴
         assert(grouped forall { _.length == 5 })
-        assert(grouped.length == 16)
+        assert(grouped.length == 13)
 
         val string = (grouped flatMap { y =>
             val x = y map { _.toInt & 0xff }
@@ -66,17 +65,17 @@ case class LocalKeys(pwSalt: Array[Byte], localKey: Array[Byte], localIv: Array[
                 x(4) & 0x1f
             )
             // println(indices)
-            indices map { LocalKeys.encodingChars(_) }
+            indices map { LocalSecret.encodingChars(_) }
         }).mkString
-        assert(string.length == 128)
+        assert(string.length == 104)
         string
     }
 
     def toReadable: String =
         toAlphaDigits.grouped(8) mkString "-"
 
-    def identical(other: LocalKeys): Boolean =
-        (pwSalt identical other.pwSalt) && (localKey identical other.localKey) && (localIv identical other.localIv)
+    def identical(other: LocalSecret): Boolean =
+        (pwSalt identical other.pwSalt) && (localKey identical other.localKey)
 
     // LocalInfo를 저장할 때는 비밀번호+AES256EBC로 암호화 해서 저장
 }

@@ -6,7 +6,7 @@ object StorageProfile {
             case Some(func) =>
                 func(bytes)
             case _ =>
-                throw new Exception("Unknown storage type")
+                throw new Exception(s"Unknown storage type: $storageType")
         }
     }
 }

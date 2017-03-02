@@ -15,21 +15,30 @@ object Security {
         random
     }
 
+    object InitVec {
+        val length = 16
+        def generate(): InitVec =
+            InitVec(secureRandom(length))
+    }
+    case class InitVec(array: Array[Byte]) {
+        assert(array.length == InitVec.length)
+    }
+
     object AES256CBC {
-        def encode(src: Array[Byte], key: Array[Byte], initialVector: Array[Byte]): Array[Byte] = {
-            assert(key.length == 32 && initialVector.length == 16)
+        def encode(src: Array[Byte], key: Array[Byte], initialVector: InitVec): Array[Byte] = {
+            assert(key.length == 32)
             val secureKey = new SecretKeySpec(key, "AES")
             val c = Cipher.getInstance("AES/CBC/PKCS5Padding")
-            c.init(Cipher.ENCRYPT_MODE, secureKey, new IvParameterSpec(initialVector))
+            c.init(Cipher.ENCRYPT_MODE, secureKey, new IvParameterSpec(initialVector.array))
 
             c.doFinal(src)
         }
 
-        def decode(src: Array[Byte], key: Array[Byte], initialVector: Array[Byte]): Array[Byte] = {
-            assert(key.length == 32 && initialVector.length == 16)
+        def decode(src: Array[Byte], key: Array[Byte], initialVector: InitVec): Array[Byte] = {
+            assert(key.length == 32)
             val secureKey = new SecretKeySpec(key, "AES")
             val c = Cipher.getInstance("AES/CBC/PKCS5Padding")
-            c.init(Cipher.DECRYPT_MODE, secureKey, new IvParameterSpec(initialVector))
+            c.init(Cipher.DECRYPT_MODE, secureKey, new IvParameterSpec(initialVector.array))
 
             c.doFinal(src)
         }

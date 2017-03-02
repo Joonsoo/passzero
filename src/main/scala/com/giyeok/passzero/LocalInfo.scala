@@ -7,6 +7,7 @@ import java.util.Date
 import scala.concurrent.duration._
 import com.giyeok.passzero.utils.ByteArrayUtil._
 import com.giyeok.passzero.Security.AES256CBC
+import com.giyeok.passzero.Security.InitVec
 import com.giyeok.passzero.Security.PasswordHash
 import com.giyeok.passzero.storage.StorageProfile
 import com.giyeok.passzero.utils.ByteBuf
@@ -23,7 +24,7 @@ object LocalInfo {
     // 그 다음 16바이트는 LocalInfo용 initial vector
     //  - LocalInfo의 나머지 내용을 해석할 때는 위의 salt와 비밀번호로 생성된 키 + 이 iv를 사용한다
 
-    // 그 다음에는 80바이트의 LocalInfo.toBytes + storageName + null byte + storageProfileInfo 의 정보를
+    // 그 다음에는 64바이트의 LocalInfo.toBytes + storageName + null byte + storageProfileInfo 의 정보를
     // (password) + (LocalInfo용 salt)로 만든 해시를 키로, (LocalInfo용 iv)를 iv로 하는 AES256CBC 로 암호해서 저장
     //  - 크기는 storageProfileInfo때문에 확정 불가
 
@@ -39,16 +40,16 @@ object LocalInfo {
         buf.writeLong(timestamp.date)
 
         val (pwHash, pwSalt) = Security.PasswordHash.generateHashAndSalt(password)
-        buf.writeBytes(pwSalt)
-        val iv = Security.secureRandom(16)
-        buf.writeBytes(iv)
+        buf.writeBytes(pwSalt) ensuring pwSalt.length == 32
+        val iv = InitVec.generate()
+        buf.writeBytes(iv.array) ensuring iv.array.length == InitVec.length
 
         val localInfoEncodeKey = pwHash take 32
 
         val contentBuf = new ByteBuf(100)
         val rawLocalKeysBytes = localInfo.localKeys.toBytes
         val rawStorageProfileBytes = localInfo.storageProfile.toBytes
-        contentBuf.writeBytes(rawLocalKeysBytes)
+        contentBuf.writeBytes(rawLocalKeysBytes) ensuring rawLocalKeysBytes.length == 64
         contentBuf.writeString(localInfo.storageProfile.name)
         contentBuf.writeByte(0)
         contentBuf.writeBytes(rawStorageProfileBytes)
@@ -80,18 +81,18 @@ object LocalInfo {
             val versionNum = reader.readBytes(2).toSeq
             versionNum match {
                 case Seq(0, 1) =>
-                    val timestamp = Timestamp(reader.readLong)
+                    val timestamp = Timestamp(reader.readLong())
                     val localInfoSalt = reader.readBytes(32)
-                    val localInfoIv = reader.readBytes(16)
-                    assert(localInfoSalt.length == 32 && localInfoIv.length == 16)
+                    val localInfoIv = InitVec(reader.readBytes(InitVec.length))
+                    assert(localInfoSalt.length == 32)
                     val localInfoKey = PasswordHash.generateHash(localInfoSalt, password) take 32
 
                     val encodedContent = reader.readRest()
                     val content = AES256CBC.decode(encodedContent, localInfoKey, localInfoIv)
 
-                    val (localKeysBytes, storageProfileBytes) = content splitAt 80
+                    val (localKeysBytes, storageProfileBytes) = content splitAt 64
 
-                    val localKeys = LocalKeys.fromBytes(localKeysBytes)
+                    val localKeys = LocalSecret.fromBytes(localKeysBytes)
                     val (storageProfileTypeBytes, storageProfileContent) = storageProfileBytes span { _ != 0 }
                     val storageProfileType = storageProfileTypeBytes.asString
                     val storageProfile = StorageProfile.fromBytes(storageProfileType, storageProfileContent.tail)
@@ -143,4 +144,4 @@ case class Timestamp(date: Long) extends AnyVal {
     def toDate: Date = new Date(date)
 }
 
-class LocalInfo(val localKeys: LocalKeys, val storageProfile: StorageProfile)
+class LocalInfo(val localKeys: LocalSecret, val storageProfile: StorageProfile)

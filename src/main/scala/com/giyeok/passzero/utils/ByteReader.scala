@@ -18,7 +18,7 @@ class ByteReader(array: Array[Byte], offset: Int = 0) {
         copied
     }
 
-    def readLong: Long = {
+    def readLong(): Long = {
         val value = array.asLong(_pointer)
         _pointer += 8
         value

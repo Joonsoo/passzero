@@ -9,6 +9,8 @@ import com.giyeok.passzero.storage.EntityMeta
 import com.giyeok.passzero.storage.Path
 import com.giyeok.passzero.storage.StorageSession
 import scala.concurrent.duration._
+import com.giyeok.passzero.Security.InitVec
+import org.json4s.JValue
 
 object Session {
     def load(password: String, localInfoPath: String): Session = {
@@ -25,7 +27,7 @@ object Session {
     }
 }
 
-class Session(password: String, localKeys: LocalKeys, storage: StorageSession) {
+class Session(password: String, localKeys: LocalSecret, storage: StorageSession) {
     private val secretKey: Array[Byte] = {
         // (password: String, pwSalt: Array[Byte], localKey: Array[Byte])
         val pwHash = PasswordHash.generateHash(localKeys.pwSalt, password)
@@ -36,12 +38,13 @@ class Session(password: String, localKeys: LocalKeys, storage: StorageSession) {
 
     def localInfo: LocalInfo = new LocalInfo(localKeys, storage.profile)
 
-    def encode(array: Array[Byte]): Array[Byte] = {
-        AES256CBC.encode(array, secretKey, localKeys.localIv)
+    def encode(array: Array[Byte]): (InitVec, Array[Byte]) = {
+        val iv = InitVec.generate()
+        (iv, AES256CBC.encode(array, secretKey, iv))
     }
 
-    def decode(source: Array[Byte]): Array[Byte] = {
-        AES256CBC.decode(source, secretKey, localKeys.localIv)
+    def decode(source: Array[Byte], initVec: InitVec): Array[Byte] = {
+        AES256CBC.decode(source, secretKey, initVec)
     }
 
     def list(path: Path): Seq[EntityMeta] = {
@@ -49,27 +52,33 @@ class Session(password: String, localKeys: LocalKeys, storage: StorageSession) {
         storage.list(path)
     }
 
-    def get(path: Path): Entity[Array[Byte]] = {
+    def get(path: Path): Option[Entity[Array[Byte]]] = {
         // storage에서 (파일) path의 내용 디코딩해서 반환
-        storage.get(path) mapContent decode
+        storage.get(path) map {
+            _ mapContent { content =>
+                val (initVecBytes, body) = content.splitAt(InitVec.length)
+                decode(body, InitVec(initVecBytes))
+            }
+        }
     }
 
-    def getAsString(path: Path): Entity[String] = {
+    def getAsString(path: Path): Option[Entity[String]] = {
         // storage에서 (파일) path의 내용 디코딩해서 스트링으로 변환해서 반환
-        get(path) mapContent { _.asString }
+        get(path) map { _ mapContent { _.asString } }
     }
 
-    def getAsJson(path: Path): Entity[Nothing] = {
-        getAsString(path) mapContent { _ => ??? }
+    def getAsJson(path: Path): Option[Entity[JValue]] = {
+        getAsString(path) map { _ mapContent { _ => ??? } }
     }
 
     def put(path: Path, content: Array[Byte]): Unit = {
         // storage에 (파일) path의 내용을 인코딩된 content로 치환
-        storage.putContent(path, encode(content))
+        val (initVec, encoded) = encode(content)
+        storage.putContent(path, initVec.array ++ encoded)
     }
 
-    def putString(path: Path, newContent: String): Unit = {
-        put(path, newContent.toBytes)
+    def putString(path: Path, content: String): Unit = {
+        put(path, content.toBytes)
     }
 
     def delete(path: Path, recursive: Boolean): Unit = {
