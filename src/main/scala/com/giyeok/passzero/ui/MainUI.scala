@@ -9,14 +9,17 @@ import java.awt.datatransfer.Transferable
 import java.awt.datatransfer.UnsupportedFlavorException
 import java.awt.event.ActionEvent
 import java.io.File
+import java.security.InvalidKeyException
 import java.util.concurrent.atomic.AtomicLong
 import javax.swing.JButton
 import javax.swing.JFrame
 import javax.swing.JLabel
+import javax.swing.JOptionPane
 import javax.swing.JPanel
 import javax.swing.JPasswordField
 import javax.swing.Timer
 import scala.concurrent.duration._
+import scala.util.Failure
 import scala.util.Random
 import scala.util.Success
 import scala.util.Try
@@ -95,13 +98,24 @@ class SettingUI(config: Config, parent: MainUI) extends JPanel {
 
     btn.addActionListener((e: ActionEvent) => {
         val password = new String(passwordBox.getPassword)
-        val localInfo = new LocalInfo(LocalSecret.generateRandomLocalInfo(), new MemoryStorageProfile)
-        println(config.localInfoFile.getCanonicalPath)
-        LocalInfo.save(password, localInfo, config.localInfoFile)
 
-        new PasswordListUI(null, config, parent).putTextToClipboard("What??", None)
+        JOptionPane.showMessageDialog(this, s"Creating local info file to ${config.localInfoFile.getCanonicalPath}; ${System.getProperty("java.home")}")
+        try {
+            val localInfo = new LocalInfo(LocalSecret.generateRandomLocalInfo(), new MemoryStorageProfile)
+            println(config.localInfoFile.getCanonicalPath)
+            LocalInfo.save(password, localInfo, config.localInfoFile)
 
-        parent.init()
+            new PasswordListUI(null, config, parent).putTextToClipboard("What??", None)
+
+            parent.init()
+        } catch {
+            case exception: InvalidKeyException if exception.getMessage == "Illegal key size" =>
+                val message = s"Illegal key size; solution here ${System.getProperty("java.home")}"
+                JOptionPane.showMessageDialog(this, message)
+            case exception: Exception =>
+                val message = s"${exception.getClass.getCanonicalName}: ${exception.getMessage}; ${System.getProperty("java.home")}"
+                JOptionPane.showMessageDialog(this, message)
+        }
     })
 
     //    private val myFont = new JLabel().getFont
@@ -132,14 +146,18 @@ class MasterPasswordUI(config: Config, parent: MainUI) extends JPanel {
     })
 
     def passwordEntered(password: String): Unit = {
-        try {
-            parent.sessionInitialized(Session.load(password, config.localInfoFile))
-        } catch {
-            // TODO Illegal Key Size는 특별 처리
-            case exception: Exception =>
-                println(exception)
-            case _: Throwable =>
-                ???
+        JOptionPane.showMessageDialog(this, s"Loading local info file from ${config.localInfoFile.getCanonicalPath}; ${System.getProperty("java.home")}")
+        Try(Session.load(password, config.localInfoFile)) match {
+            case Success(session) =>
+                parent.sessionInitialized(session)
+                JOptionPane.showMessageDialog(this, s"Successfully loaded local info to ${config.localInfoFile.getCanonicalPath}")
+            case Failure(exception) =>
+                // TODO Illegal Key Size는 특별 처리
+                exception match {
+                    case exception: Exception =>
+                        val message = s"${exception.getMessage}; ${System.getProperty("java.home")}"
+                        JOptionPane.showMessageDialog(this, message)
+                }
         }
     }
 }

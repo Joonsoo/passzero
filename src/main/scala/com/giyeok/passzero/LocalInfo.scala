@@ -65,9 +65,10 @@ object LocalInfo {
             // TODO 오류 처리
             ???
         }
+        val savingBytes = save(password, localInfo)
         val os = new FileOutputStream(dest)
         try {
-            os.write(save(password, localInfo))
+            os.write(savingBytes)
         } finally {
             os.close()
         }
