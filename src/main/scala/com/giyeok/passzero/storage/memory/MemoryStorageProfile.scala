@@ -10,7 +10,7 @@ object MemoryStorageProfile extends StorageProfileSpec {
     implicit val formats = DefaultFormats
 
     val name: String = "memory"
-    val deserializer: (Array[Byte]) => StorageProfile = { array =>
+    val deserializer: (Array[Byte]) => MemoryStorageProfile = { array =>
         new MemoryStorageProfile() ensuring (array.asString == specString)
     }
 }

@@ -3,8 +3,12 @@ package com.giyeok.passzero
 import com.giyeok.passzero.utils.ByteArrayUtil._
 
 object LocalSecret {
-    val encodingChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    assert(encodingChars.length >= 32)
+    // 대문자 26 소문자 26 숫자 10 특수문자 2(!@) = 64
+    val encodingChars: IndexedSeq[Char] = ('0' to '9') ++ ('A' to 'Z') ++ ('a' to 'z') ++ Seq('!', '@')
+    assert(encodingChars.length == 64)
+
+    // TODO encodingChars 32개(5비트) -> 64개(6비트)로 수정하기
+    // 64 * 8 = 512 bits
 
     def fromBytes(bytes: Seq[Byte]): LocalSecret = {
         assert(bytes.length == 64)
