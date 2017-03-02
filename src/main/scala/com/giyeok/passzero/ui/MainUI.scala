@@ -3,15 +3,23 @@ package com.giyeok.passzero.ui
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
 import java.awt.Toolkit
+import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
+import java.awt.datatransfer.Transferable
+import java.awt.datatransfer.UnsupportedFlavorException
 import java.awt.event.ActionEvent
 import java.io.File
+import java.util.concurrent.atomic.AtomicLong
 import javax.swing.JButton
 import javax.swing.JFrame
 import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.JPasswordField
+import javax.swing.Timer
 import scala.concurrent.duration._
+import scala.util.Random
+import scala.util.Success
+import scala.util.Try
 import com.giyeok.passzero.LocalInfo
 import com.giyeok.passzero.LocalSecret
 import com.giyeok.passzero.Session
@@ -50,7 +58,8 @@ class MainUI(config: Config) extends JPanel {
         removeAll()
         add(content, layoutConstraint)
 
-        validate()
+        revalidate()
+        repaint()
     }
 
     def init(): Unit = {
@@ -135,17 +144,60 @@ class MasterPasswordUI(config: Config, parent: MainUI) extends JPanel {
     }
 }
 
-class PasswordListUI(session: Session, config: Config, parent: MainUI) extends JPanel {
+class PasswordListUI(session: Session, config: Config, parent: MainUI) extends JPanel with ExpirableClipboard {
     // session 객체와 session.localInfo 객체는 절대 이 클래스 밖으로 나가서는 안된다.
 
     add(new JLabel("PasswordListUI"))
+
+    val copyBtn = new JButton("Copy")
+    add(copyBtn)
+
+    copyBtn.addActionListener({ (e: ActionEvent) =>
+        putTextToClipboard(new String((Random.alphanumeric take 5).toArray), Some(30.seconds))
+    })
+}
+
+trait ExpirableClipboard {
+    private var lastClipboardPut = Option.empty[(Long, String)]
+
+    private val putIdCounter = new AtomicLong()
+
+    class EmptyTransferable extends Transferable {
+        def getTransferData(flavor: DataFlavor): AnyRef =
+            throw new UnsupportedFlavorException(flavor)
+
+        def getTransferDataFlavors: Array[DataFlavor] =
+            new Array[DataFlavor](0)
+
+        def isDataFlavorSupported(flavor: DataFlavor): Boolean = false
+    }
 
     def putTextToClipboard(text: String, timeoutOpt: Option[Duration]): Unit = {
         val clipboard = Toolkit.getDefaultToolkit.getSystemClipboard
         clipboard.setContents(new StringSelection(text), null)
         timeoutOpt foreach { timeout =>
-            // TODO timeout이 Some이면 그 시간만큼 지난 후에 clipboard 지우기
-            ???
+            // timeout이 Some이면 그 시간만큼 지난 후에 clipboard 지우기
+            val putId = putIdCounter.incrementAndGet()
+            lastClipboardPut = Some(putId, text)
+            println(lastClipboardPut)
+            val timer = new Timer(timeout.toMillis.toInt, { (_: ActionEvent) =>
+                this.synchronized {
+                    println(s"Removing $putId $lastClipboardPut")
+                    lastClipboardPut match {
+                        case Some((`putId`, lastText)) =>
+                            val contents = clipboard.getContents(null)
+                            Try(contents.getTransferData(DataFlavor.stringFlavor)) match {
+                                case Success(`lastText`) =>
+                                    clipboard.setContents(new EmptyTransferable, null)
+                                    println("Clipboard cleared")
+                                case _ => // nothing to do
+                            }
+                        case _ => // nothing to do
+                    }
+                }
+            })
+            timer.setRepeats(false)
+            timer.start()
         }
     }
 }
