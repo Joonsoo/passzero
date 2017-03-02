@@ -13,8 +13,8 @@ import com.giyeok.passzero.Security.InitVec
 import org.json4s.JValue
 
 object Session {
-    def load(password: String, localInfoPath: String): Session = {
-        val (localInfoFileTimestamp, localInfo) = LocalInfo.load(password, new File(localInfoPath))
+    def load(password: String, localInfoFile: File): Session = {
+        val (localInfoFileTimestamp, localInfo) = LocalInfo.load(password, localInfoFile)
 
         val localInfoFileAge = Timestamp.current - localInfoFileTimestamp
         // localInfoFileTimestamp 를 보고 파일이 너무 오래되었으면(60일 이상 지났으면) 새로운 salt와 iv로 업데이트
@@ -23,7 +23,7 @@ object Session {
             LocalInfo.save(password, localInfo)
         }
 
-        new Session(password, localInfo.localKeys, localInfo.storageProfile.createSession())
+        new Session(password, localInfo.localSecret, localInfo.storageProfile.createSession())
     }
 }
 

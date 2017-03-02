@@ -20,11 +20,11 @@ object Main {
         localSave2.printHexMatrix()
 
         val restoredLocalInfo = LocalInfo.load(password, localSave)
-        assert(localKeys identical restoredLocalInfo._2.localKeys)
+        assert(localKeys identical restoredLocalInfo._2.localSecret)
         // TODO storageProfile도 확인
 
         println(s"original localKeys: ${localKeys.toReadable}")
-        println(s"restored localKeys: ${restoredLocalInfo._2.localKeys.toReadable}")
+        println(s"restored localKeys: ${restoredLocalInfo._2.localSecret.toReadable}")
 
         val original = "Joonsoo is real king"
         val (initVec, encoded) = session.encode(original.toBytes)

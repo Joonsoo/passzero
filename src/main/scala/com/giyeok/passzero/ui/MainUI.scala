@@ -1,11 +1,7 @@
 package com.giyeok.passzero.ui
 
-import java.awt.Font
-import java.awt.Graphics
-import java.awt.Graphics2D
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
-import java.awt.RenderingHints
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import java.awt.event.ActionEvent
@@ -14,12 +10,16 @@ import javax.swing.JButton
 import javax.swing.JFrame
 import javax.swing.JLabel
 import javax.swing.JPanel
+import javax.swing.JPasswordField
 import scala.concurrent.duration._
+import com.giyeok.passzero.LocalInfo
+import com.giyeok.passzero.LocalSecret
 import com.giyeok.passzero.Session
+import com.giyeok.passzero.storage.memory.MemoryStorageProfile
 
 object MainUI {
     def main(args: Array[String]): Unit = {
-        val config: Config = Config(new StringRegistry {}, new File("./localInfo"))
+        val config: Config = Config(new StringRegistry {}, new File("./localInfo.p0"))
 
         val frame = new JFrame(config.stringRegistry.get("MainTitle"))
         frame.setSize(800, 600)
@@ -46,46 +46,99 @@ class MainUI(config: Config) extends JPanel {
         layoutConstraint.fill = GridBagConstraints.BOTH
         layoutConstraint.weightx = 1.0
         layoutConstraint.weighty = 1.0
+
+        removeAll()
         add(content, layoutConstraint)
+
+        validate()
     }
 
-    if (!config.localInfoFile.exists()) {
-        replaceChild(new SettingUI(config, this))
-    } else {
-        replaceChild(new MasterPasswordUI(config, this))
+    def init(): Unit = {
+        if (!config.localInfoFile.exists()) {
+            replaceChild(new SettingUI(config, this))
+        } else {
+            replaceChild(new MasterPasswordUI(config, this))
+        }
     }
+
+    def sessionInitialized(session: Session): Unit = {
+        replaceChild(new PasswordListUI(session, config, this))
+    }
+
+    init()
 }
 
 class SettingUI(config: Config, parent: MainUI) extends JPanel {
+    // MasterPassword와 remote storage 설정을 하면 끝. config.localInfoFile 위치에 저장하고 parent 상태 업데이트
+    // Emergency Kit을 pdf 형태로 생성한다(pdfbox 사용) - 저장 및 바로 인쇄 기능
+    // 설정이 완료되면 parent.init() 호출 -> config.localInfoFile 이 생겼으므로 MasterPasswordUI로 넘어간다
+
     add(new JLabel("SettingUI"))
 
-    val btn = new JButton("Hello?")
+    val passwordBox = new JPasswordField(20)
+    add(passwordBox)
+
+    val passwordConfirmBox = new JPasswordField(20)
+    add(passwordConfirmBox)
+
+    val btn = new JButton("Save")
     add(btn)
 
     btn.addActionListener((e: ActionEvent) => {
+        val password = new String(passwordBox.getPassword)
+        val localInfo = new LocalInfo(LocalSecret.generateRandomLocalInfo(), new MemoryStorageProfile)
+        println(config.localInfoFile.getCanonicalPath)
+        LocalInfo.save(password, localInfo, config.localInfoFile)
+
         new PasswordListUI(null, config, parent).putTextToClipboard("What??", None)
+
+        parent.init()
     })
 
-    private val myFont = new JLabel().getFont
-
-    override def paintComponent(g: Graphics): Unit = {
-        super.paintComponent(g)
-
-        val g2 = g.asInstanceOf[Graphics2D]
-        g2.drawRect(0, 0, getWidth - 1, getHeight - 1)
-        g2.drawLine(0, 0, 1000, 1000)
-        g2.setFont(new Font("Monospaced", Font.PLAIN, 100))
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-        g2.drawString("Hello??", 100, 100)
-    }
+    //    private val myFont = new JLabel().getFont
+    //
+    //    override def paintComponent(g: Graphics): Unit = {
+    //        super.paintComponent(g)
+    //
+    //        val g2 = g.asInstanceOf[Graphics2D]
+    //        g2.drawRect(0, 0, getWidth - 1, getHeight - 1)
+    //        g2.drawLine(0, 0, 1000, 1000)
+    //        g2.setFont(new Font("Monospaced", Font.PLAIN, 100))
+    //        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+    //        g2.drawString("Hello??", 100, 100)
+    //    }
 }
 
 class MasterPasswordUI(config: Config, parent: MainUI) extends JPanel {
     add(new JLabel("MasterPasswordUI"))
+
+    val passwordBox = new JPasswordField(20)
+    add(passwordBox)
+
+    val enterBtn = new JButton("Enter")
+    add(enterBtn)
+
+    enterBtn.addActionListener({ (e: ActionEvent) =>
+        passwordEntered(new String(passwordBox.getPassword))
+    })
+
+    def passwordEntered(password: String): Unit = {
+        try {
+            parent.sessionInitialized(Session.load(password, config.localInfoFile))
+        } catch {
+            // TODO Illegal Key Size는 특별 처리
+            case exception: Exception =>
+                println(exception)
+            case _: Throwable =>
+                ???
+        }
+    }
 }
 
 class PasswordListUI(session: Session, config: Config, parent: MainUI) extends JPanel {
     // session 객체와 session.localInfo 객체는 절대 이 클래스 밖으로 나가서는 안된다.
+
+    add(new JLabel("PasswordListUI"))
 
     def putTextToClipboard(text: String, timeoutOpt: Option[Duration]): Unit = {
         val clipboard = Toolkit.getDefaultToolkit.getSystemClipboard

@@ -11,6 +11,9 @@ libraryDependencies += "org.json4s" %% "json4s-native" % "3.5.0"
 
 // TODO google drive api
 
+// https://mvnrepository.com/artifact/org.apache.pdfbox/pdfbox
+libraryDependencies += "org.apache.pdfbox" % "pdfbox" % "2.0.4"
+
 // ===== Test =====
 libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.1" % "test"
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test"

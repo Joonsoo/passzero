@@ -47,7 +47,7 @@ object LocalInfo {
         val localInfoEncodeKey = pwHash take 32
 
         val contentBuf = new ByteBuf(100)
-        val rawLocalKeysBytes = localInfo.localKeys.toBytes
+        val rawLocalKeysBytes = localInfo.localSecret.toBytes
         val rawStorageProfileBytes = localInfo.storageProfile.toBytes
         contentBuf.writeBytes(rawLocalKeysBytes) ensuring rawLocalKeysBytes.length == 64
         contentBuf.writeString(localInfo.storageProfile.name)
@@ -61,7 +61,7 @@ object LocalInfo {
     }
 
     def save(password: String, localInfo: LocalInfo, dest: File): Unit = {
-        if (!dest.isFile) {
+        if (dest.exists() && !dest.isFile) {
             // TODO 오류 처리
             ???
         }
@@ -144,4 +144,4 @@ case class Timestamp(date: Long) extends AnyVal {
     def toDate: Date = new Date(date)
 }
 
-class LocalInfo(val localKeys: LocalSecret, val storageProfile: StorageProfile)
+class LocalInfo(val localSecret: LocalSecret, val storageProfile: StorageProfile)
