@@ -17,6 +17,9 @@ libraryDependencies += "com.google.apis" % "google-api-services-drive" % "v3-rev
 // https://mvnrepository.com/artifact/org.apache.pdfbox/pdfbox
 libraryDependencies += "org.apache.pdfbox" % "pdfbox" % "2.0.4"
 
+// https://mvnrepository.com/artifact/commons-logging/commons-logging
+libraryDependencies += "commons-logging" % "commons-logging" % "1.2"
+
 // ===== Test =====
 libraryDependencies += "org.scalactic" %% "scalactic" % "3.0.1" % "test"
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test"
@@ -26,6 +29,6 @@ libraryDependencies += "org.apache.hbase" % "hbase-testing-util" % "1.2.4" % "te
 
 javacOptions in compile ++= Seq("-encoding", "UTF-8")
 
-fork in run := true
+mainClass in assembly := Some("com.giyeok.passzero.ui.MainUI")
 
 // javaOptions in run += "-agentlib:hprof=cpu=samples"
