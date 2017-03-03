@@ -81,8 +81,13 @@ class MainUI(config: Config) extends JPanel {
 }
 
 class SettingUI(config: Config, parent: MainUI) extends JPanel {
-    // MasterPassword와 remote storage 설정을 하면 끝. config.localInfoFile 위치에 저장하고 parent 상태 업데이트
-    // Emergency Kit을 pdf 형태로 생성한다(pdfbox 사용) - 저장 및 바로 인쇄 기능
+    // 1. 새로 만들기 시에는
+    //   - MasterPassword와 remote storage 설정을 하면 끝.
+    //   - 설정이 완료되면 config.localInfoFile 위치에 저장하고 parent 상태 업데이트하고
+    //   - Emergency Kit을 pdf 형태로 생성한다(pdfbox 사용) - 저장 및 바로 인쇄 기능
+    // 2. 다른 컴퓨터에서 import 시에는
+    //   - MasterPassword와 remote storage 설정 및 localSecret 코드 입력하면 끝.
+    //   - 여기서 MasterPassword가 틀리면 전체 기능이 제대로 동작하지 않음.
     // 설정이 완료되면 parent.init() 호출 -> config.localInfoFile 이 생겼으므로 MasterPasswordUI로 넘어간다
 
     add(new JLabel("SettingUI"))

@@ -23,7 +23,7 @@ object ByteArrayUtil {
     }
 
     implicit class ImplicitLong(long: Long) {
-        def toBytes: Array[Byte] = ???
+        def toBytes: Array[Byte] = new ByteBuf(8).writeLong(long).finish()
     }
 
     implicit class Implicit(array: Array[Byte]) {

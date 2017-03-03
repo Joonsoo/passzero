@@ -16,6 +16,9 @@ class LocalSecretTest extends FlatSpec {
         }
         test(LocalSecret(ByteArrayUtil.fill(32, 0), ByteArrayUtil.fill(32, 0)))
         test(LocalSecret(ByteArrayUtil.fill(32, 255), ByteArrayUtil.fill(32, 255)))
+        val secret = LocalSecret.generateRandomLocalInfo()
+        println(secret.toAlphaDigits)
+        println(secret.toReadable)
         (0 until 10000) foreach { _ =>
             test(LocalSecret.generateRandomLocalInfo())
         }
