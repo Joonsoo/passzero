@@ -49,6 +49,15 @@ trait GridLayoutUtil extends Composite {
         gd
     }
 
+    def leftest(horizontalSpan: Int = -1): GridData = {
+        val gd = new GridData()
+        gd.horizontalAlignment = SWT.LEFT
+        if (horizontalSpan >= 0) {
+            gd.horizontalSpan = horizontalSpan
+        }
+        gd
+    }
+
     def rightest(horizontalSpan: Int = -1): GridData = {
         val gd = new GridData()
         gd.horizontalAlignment = SWT.RIGHT
@@ -96,6 +105,18 @@ trait GridLayoutUtil extends Composite {
     implicit class GridDataAdd(gd: GridData) {
         def and(additional: GridData => Unit): GridData = {
             additional(gd)
+            gd
+        }
+
+        def exclusiveTop(): GridData = {
+            gd.grabExcessVerticalSpace = true
+            gd.verticalAlignment = SWT.BOTTOM
+            gd
+        }
+
+        def exclusiveBottom(): GridData = {
+            gd.grabExcessVerticalSpace = true
+            gd.verticalAlignment = SWT.TOP
             gd
         }
     }

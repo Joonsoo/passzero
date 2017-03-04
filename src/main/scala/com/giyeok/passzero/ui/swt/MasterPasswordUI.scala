@@ -25,25 +25,22 @@ class MasterPasswordUI(val shell: Shell, parent: MainUI, style: Int, config: Con
 
     setLayout(new GridLayout(2, false))
 
-    private val passwordLabel = label(
-        "Master Password:",
-        horizontalCenter(2) and { _.grabExcessVerticalSpace = true } and { _.verticalAlignment = SWT.BOTTOM }
-    )
-
+    private val passwordLabel = label(config.stringRegistry.get("Master Password:"), leftest().exclusiveTop())
     private val largerFont = modifyFont(passwordLabel.getFont, 18, SWT.NONE)
+
     passwordLabel.setFont(largerFont)
+
+    private val passwordLengthLabel = label("0", SWT.RIGHT, horizontalFill().exclusiveTop())
+    passwordLengthLabel.setFont(largerFont)
 
     private val password = new Text(this, SWT.PASSWORD | SWT.BORDER)
     password.setFont(largerFont)
-    password.setLayoutData(horizontalFill())
-
-    private val passwordLengthLabel = label("0", rightest())
-    passwordLengthLabel.setFont(largerFont)
+    password.setLayoutData(horizontalFill(2))
 
     private val enterBtn = new Button(this, SWT.NONE)
-    enterBtn.setText("Enter")
+    enterBtn.setText(config.stringRegistry.get("Enter"))
     enterBtn.setFont(largerFont)
-    enterBtn.setLayoutData(horizontalCenter(2) and { _.grabExcessVerticalSpace = true } and { _.verticalAlignment = SWT.TOP })
+    enterBtn.setLayoutData(rightest(2).exclusiveBottom())
 
     password.addKeyListener(new KeyListener {
         def keyPressed(e: KeyEvent): Unit = {
@@ -51,7 +48,6 @@ class MasterPasswordUI(val shell: Shell, parent: MainUI, style: Int, config: Con
                 passwordEntered()
             }
         }
-
         def keyReleased(e: KeyEvent): Unit = {}
     })
     password.addModifyListener((e: ModifyEvent) => {
@@ -66,9 +62,12 @@ class MasterPasswordUI(val shell: Shell, parent: MainUI, style: Int, config: Con
         def widgetDefaultSelected(e: SelectionEvent): Unit = {}
     })
 
+    private def allChildrenSetEnabled(enabled: Boolean): Unit = {
+        getChildren foreach { _.setEnabled(enabled) }
+    }
+
     private def passwordEntered(): Unit = {
-        password.setEnabled(false)
-        enterBtn.setEnabled(false)
+        allChildrenSetEnabled(false)
 
         val passwordText = password.getText
 
@@ -77,8 +76,7 @@ class MasterPasswordUI(val shell: Shell, parent: MainUI, style: Int, config: Con
         implicit val ec = ExecutionContext.global
         Future(Try(Session.load(passwordText, config.localInfoFile))) foreach { loadResult =>
             getDisplay.syncExec(() => {
-                password.setEnabled(true)
-                enterBtn.setEnabled(true)
+                allChildrenSetEnabled(true)
                 loadResult match {
                     case Success(session) =>
                         // showMessage(s"Successfully loaded local info to ${config.localInfoFile.getCanonicalPath}")
