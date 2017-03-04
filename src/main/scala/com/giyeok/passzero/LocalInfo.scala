@@ -145,4 +145,5 @@ case class Timestamp(date: Long) extends AnyVal {
     def toDate: Date = new Date(date)
 }
 
+// TODO storageProfile에서 업데이트할 필요가 있을 때 LocalInfo를 호출해서 업데이트할 수 있게 하는 경로 추가
 class LocalInfo(val localSecret: LocalSecret, val storageProfile: StorageProfile)

@@ -1,7 +1,9 @@
 package com.giyeok.passzero.storage.googledrive
 
+import java.io.InputStreamReader
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
+import scala.collection.JavaConverters._
 import com.giyeok.passzero.storage.StorageProfile
 import com.giyeok.passzero.storage.StorageProfileSpec
 import com.giyeok.passzero.utils.ByteArrayUtil._
@@ -9,6 +11,17 @@ import com.giyeok.passzero.utils.ByteBuf
 import com.giyeok.passzero.utils.ByteReader
 import com.giyeok.passzero.utils.BytesInputStream
 import com.giyeok.passzero.utils.BytesOutputStream
+import com.google.api.client.auth.oauth2.Credential
+import com.google.api.client.auth.oauth2.StoredCredential
+import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp
+import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver
+import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow
+import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
+import com.google.api.client.json.jackson2.JacksonFactory
+import com.google.api.client.util.store.DataStoreFactory
+import com.google.api.services.drive.Drive
+import com.google.api.services.drive.DriveScopes
 import org.json4s.DefaultFormats
 import org.json4s._
 import org.json4s.native.JsonMethods._
@@ -114,6 +127,37 @@ class GoogleDriveStorageProfile(applicationName: String, clientSecret: JValue, d
         buf.finish()
     }
 
-    def createSession(): GoogleDriveStorageSession =
-        new GoogleDriveStorageSession
+    // TODO dataStoreFactory 에 의해서 dataStores에 변경사항이 생기면 LocalInfo에 반영해서 저장해야 함
+    private lazy val dataStoreFactory: DataStoreFactory = ???
+    private lazy val jsonFactory = JacksonFactory.getDefaultInstance
+    private lazy val httpTransport = GoogleNetHttpTransport.newTrustedTransport()
+    private lazy val scopes = Seq(DriveScopes.DRIVE_METADATA_READONLY).asJava
+
+    def authorize(): Credential = {
+        val in = new BytesInputStream(compact(render(clientSecret)).toBytes)
+        val clientSecrets = GoogleClientSecrets.load(jsonFactory, new InputStreamReader(in))
+
+        val flow =
+            new GoogleAuthorizationCodeFlow.Builder(httpTransport, jsonFactory, clientSecrets, scopes)
+                .setDataStoreFactory(dataStoreFactory)
+                .setAccessType("offline")
+                .build()
+        val credential = new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver()).authorize("user")
+
+        val credentialDataStore = flow.getCredentialDataStore.asInstanceOf[LocalInfoDataStore[StoredCredential]]
+        credentialDataStore.printAll()
+
+        credential
+    }
+
+    def getDriveService: Drive = {
+        val credential = authorize()
+        new Drive.Builder(httpTransport, jsonFactory, credential)
+            .setApplicationName(applicationName)
+            .build()
+    }
+
+    def createSession(): GoogleDriveStorageSession = {
+        new GoogleDriveStorageSession(this, getDriveService)
+    }
 }
