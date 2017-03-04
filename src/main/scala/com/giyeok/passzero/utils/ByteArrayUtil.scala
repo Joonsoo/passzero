@@ -58,15 +58,15 @@ object ByteArrayUtil {
             Base64.getEncoder.encodeToString(array)
 
         def asInt(offset: Int): Int = {
-            (array(offset).toLong << 24) | (array(offset + 1).toLong << 16) |
-                (array(offset + 2).toLong << 8) | array(offset + 3).toLong
+            ((array(offset).toInt & 0xff) << 24) | ((array(offset + 1).toInt & 0xff) << 16) |
+                ((array(offset + 2).toInt & 0xff) << 8) | (array(offset + 3).toInt & 0xff)
         }
 
         def asLong(offset: Int): Long = {
-            (array(offset).toLong << 56) | (array(offset + 1).toLong << 48) |
-                (array(offset + 2).toLong << 40) | (array(offset + 3).toLong << 32) |
-                (array(offset + 4).toLong << 24) | (array(offset + 5).toLong << 16) |
-                (array(offset + 6).toLong << 8) | array(offset + 7).toLong
+            ((array(offset).toLong & 0xff) << 56) | ((array(offset + 1).toLong & 0xff) << 48) |
+                ((array(offset + 2).toLong & 0xff) << 40) | ((array(offset + 3).toLong & 0xff) << 32) |
+                ((array(offset + 4).toLong & 0xff) << 24) | ((array(offset + 5).toLong & 0xff) << 16) |
+                ((array(offset + 6).toLong & 0xff) << 8) | (array(offset + 7).toLong & 0xff)
         }
 
         def asLong: Long = asLong(0) ensuring array.length == 8
