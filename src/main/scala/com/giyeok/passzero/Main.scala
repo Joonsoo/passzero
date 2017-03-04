@@ -3,15 +3,15 @@ package com.giyeok.passzero
 import com.giyeok.passzero.storage.Path
 import com.giyeok.passzero.utils.ByteArrayUtil._
 import com.giyeok.passzero.storage.memory.MemoryStorageProfile
+import com.giyeok.passzero.storage.memory.MemoryStorageSession
 
 object Main {
     def main(args: Array[String]): Unit = {
         val localKeys = LocalSecret.generateRandomLocalInfo()
-        val storageSession = (new MemoryStorageProfile).createSession()
 
         val password = "starbucks_apple_samsung_television_coffee"
 
-        val session = new Session(password, localKeys, storageSession)
+        val session = new Session(password, localKeys, new MemoryStorageProfile)
 
         val localSave = LocalInfo.save(password, session.localInfo)
         localSave.printHexMatrix()
@@ -37,7 +37,7 @@ object Main {
             println(s"  * iteration $iteration")
             val path = Path("")
             session.putString(path, original)
-            storageSession.printHexMatrixOfFile(path)
+            session.storage.asInstanceOf[MemoryStorageSession].printHexMatrixOfFile(path)
             val decoded = session.getAsString(path).get.content
             println(s"decoded: $decoded")
             assert(original == decoded)

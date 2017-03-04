@@ -1,5 +1,6 @@
 package com.giyeok.passzero.storage
 
+// TODO StorageSession이 재설정되어야 하면 Session에 변경이 일어나야 함
 trait StorageSession {
     def profile: StorageProfile
     def list(path: Path): Seq[EntityMeta]

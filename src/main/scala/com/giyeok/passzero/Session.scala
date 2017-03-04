@@ -10,6 +10,7 @@ import com.giyeok.passzero.storage.Path
 import com.giyeok.passzero.storage.StorageSession
 import scala.concurrent.duration._
 import com.giyeok.passzero.Security.InitVec
+import com.giyeok.passzero.storage.StorageProfile
 import org.json4s.JValue
 
 object Session {
@@ -23,11 +24,21 @@ object Session {
             LocalInfo.save(password, localInfo)
         }
 
-        new Session(password, localInfo.localSecret, localInfo.storageProfile.createSession())
+        // TODO Session에서 storageProfile이 변경될 때 localInfoFile을 업데이트할 수 있도록 Session이 localInfoFile에 대한 정보를 갖고 있어야 한다
+        new Session(password, localInfo.localSecret, localInfo.storageProfile)
     }
 }
 
-class Session(password: String, localKeys: LocalSecret, storage: StorageSession) {
+class StorageSessionManager(_storageProfile: StorageProfile) {
+    private var _session = _storageProfile.createSession()
+
+    def storageSession(): StorageSession = _session
+}
+
+class Session(password: String, localKeys: LocalSecret, storageSessionManager: StorageSessionManager) {
+    def this(password: String, localKeys: LocalSecret, storageProfile: StorageProfile) =
+        this(password, localKeys, new StorageSessionManager(storageProfile))
+
     private val secretKey: Array[Byte] = {
         // (password: String, pwSalt: Array[Byte], localKey: Array[Byte])
         val pwHash = PasswordHash.generateHash(localKeys.pwSalt, password)
@@ -35,6 +46,9 @@ class Session(password: String, localKeys: LocalSecret, storage: StorageSession)
 
         localKeys.localKey xor halfPwHash
     }
+
+    // TODO StorageSession에서 필요에 의해 session의 storage가 변경되어야 할 수도 있다
+    def storage: StorageSession = storageSessionManager.storageSession()
 
     def localInfo: LocalInfo = new LocalInfo(localKeys, storage.profile)
 
