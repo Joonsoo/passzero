@@ -9,6 +9,11 @@ lazy val root = (project in file(".")).
 
 libraryDependencies += "org.json4s" %% "json4s-native" % "3.5.0"
 
+// swt
+val swtVersion = "4.6.2"
+resolvers += "Local Maven Repository" at "file:///C:/home/joonsoo/workspace/oneswt/maven"
+libraryDependencies += sbtoneswt.OneSwtPlugin.archDependentSwt.value
+
 // google drive api
 libraryDependencies += "com.google.api-client" % "google-api-client" % "1.22.0"
 libraryDependencies += "com.google.oauth-client" % "google-oauth-client-jetty" % "1.22.0"
