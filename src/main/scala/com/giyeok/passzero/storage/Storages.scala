@@ -1,5 +1,6 @@
 package com.giyeok.passzero.storage
 
+import com.giyeok.passzero.storage.googledrive.GoogleDriveStorageProfile
 import com.giyeok.passzero.storage.memory.MemoryStorageProfile
 
 trait StorageProfileSpec {
@@ -9,7 +10,8 @@ trait StorageProfileSpec {
 
 object Storages {
     val specs: Seq[StorageProfileSpec] = Seq(
-        MemoryStorageProfile
+        MemoryStorageProfile,
+        GoogleDriveStorageProfile
     )
 
     val specNames: Seq[String] = specs map { _.name }

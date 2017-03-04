@@ -34,7 +34,7 @@ class MainUI(parent: Composite, style: Int, config: Config) extends Composite(pa
     }
 
     def sessionInitialized(session: Session): Unit = {
-        replaceChild(new PasswordListUI(_, SWT.NONE, session, config))
+        replaceChild(new PasswordListUI(getShell, _, SWT.NONE, session, config))
     }
 
     init()
