@@ -17,6 +17,8 @@ import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
 
 object GoogleDrivePractice {
+    // 참조: https://developers.google.com/drive/v3/web/quickstart/java
+
     val applicationName = "passzero_app"
 
     private val dataStoreFactory: DataStoreFactory = LocalInfoDataStoreFactory

@@ -57,6 +57,11 @@ object ByteArrayUtil {
         def toBase64: String =
             Base64.getEncoder.encodeToString(array)
 
+        def asInt(offset: Int): Int = {
+            (array(offset).toLong << 24) | (array(offset + 1).toLong << 16) |
+                (array(offset + 2).toLong << 8) | array(offset + 3).toLong
+        }
+
         def asLong(offset: Int): Long = {
             (array(offset).toLong << 56) | (array(offset + 1).toLong << 48) |
                 (array(offset + 2).toLong << 40) | (array(offset + 3).toLong << 32) |

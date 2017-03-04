@@ -2,6 +2,8 @@ package com.giyeok.passzero.ui
 
 import java.security.InvalidKeyException
 import java.util.concurrent.atomic.AtomicLong
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.Failure
 import scala.util.Random
@@ -102,7 +104,7 @@ object SWTUI {
                 val fd = new FormData
                 fd.top = new FormAttachment(0, 0)
                 fd.left = new FormAttachment(0, 10)
-                // fd.bottom = new FormAttachment(0, 0)
+                fd.bottom = new FormAttachment(0, 20)
                 // fd.right = new FormAttachment(0, 0)
                 controls.head.setLayoutData(fd)
 
@@ -110,6 +112,7 @@ object SWTUI {
                     val fd = new FormData
                     fd.top = new FormAttachment(0, 0)
                     fd.left = new FormAttachment(prev, 10)
+                    fd.bottom = new FormAttachment(0, 20)
                     ctrl.setLayoutData(fd)
                     ctrl
                 }
@@ -212,17 +215,28 @@ object SWTUI {
         enterBtn.setText("Enter")
         enterBtn.addSelectionListener(new SelectionListener {
             def widgetSelected(e: SelectionEvent): Unit = {
-                showMessage(s"Loading local info file from ${config.localInfoFile.getCanonicalPath}; ${System.getProperty("java.home")}")
-                Try(Session.load(password.getText, config.localInfoFile)) match {
-                    case Success(session) =>
-                        parent.sessionInitialized(session)
-                        showMessage(s"Successfully loaded local info to ${config.localInfoFile.getCanonicalPath}")
-                    case Failure(exception) =>
-                        // TODO Illegal Key Size는 특별 처리
-                        exception match {
-                            case exception: Exception =>
-                                showMessage(s"${exception.getMessage}; ${System.getProperty("java.home")}")
+                password.setEnabled(false)
+                enterBtn.setEnabled(false)
+                val passwordText = password.getText
+                // showMessage(s"Loading local info file from ${config.localInfoFile.getCanonicalPath}; ${System.getProperty("java.home")}")
+
+                implicit val ec = ExecutionContext.global
+                Future(Try(Session.load(passwordText, config.localInfoFile))) foreach { loadResult =>
+                    getDisplay.syncExec(() => {
+                        password.setEnabled(true)
+                        enterBtn.setEnabled(true)
+                        loadResult match {
+                            case Success(session) =>
+                                // showMessage(s"Successfully loaded local info to ${config.localInfoFile.getCanonicalPath}")
+                                parent.sessionInitialized(session)
+                            case Failure(exception) =>
+                                // TODO Illegal Key Size는 특별 처리(설치 방법 안내)
+                                exception match {
+                                    case exception: Exception =>
+                                        showMessage(s"${exception.getMessage}; ${System.getProperty("java.home")}")
+                                }
                         }
+                    })
                 }
             }
 
