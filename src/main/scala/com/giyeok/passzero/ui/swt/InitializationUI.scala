@@ -8,7 +8,6 @@ import scala.util.Try
 import com.giyeok.passzero.LocalInfo
 import com.giyeok.passzero.LocalSecret
 import com.giyeok.passzero.PasswordUtils
-import com.giyeok.passzero.Session
 import com.giyeok.passzero.storage.StorageProfile
 import com.giyeok.passzero.storage.googledrive.GoogleDriveStorageProfile
 import com.giyeok.passzero.storage.local.LocalStorageProfile
@@ -51,6 +50,7 @@ class InitializationUI(val shell: Shell, parent: MainUI, style: Int, config: Con
     private val passwordConfirm = new Text(this, SWT.PASSWORD | SWT.BORDER)
     passwordConfirm.setLayoutData(horizontalFill(2))
 
+    // TODO 여기의 Secret Key는 EmergencyKitUI에서처럼 secret key 원본값 말고 master password로 암호화된 값으로 표시하자
     label(config.stringRegistry.get("Secret Key:"), leftLabel())
     private val secretKeyGenerationCheckBox = button(config.stringRegistry.get("New"), SWT.CHECK, leftest())
     private val secretKey = new Text(this, SWT.BORDER)
