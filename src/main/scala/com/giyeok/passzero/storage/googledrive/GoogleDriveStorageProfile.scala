@@ -29,6 +29,7 @@ import org.json4s.DefaultFormats
 import org.json4s._
 import org.json4s.native.JsonMethods._
 import scala.language.existentials
+import com.giyeok.passzero.storage.Path
 
 object GoogleDriveStorageProfile extends StorageProfileSpec {
     implicit val formats = DefaultFormats
@@ -144,8 +145,16 @@ class GoogleDriveStorageProfile(
         buf.finish()
     }
 
-    private var updated: Boolean = false
-    private def setUpdated(): Unit = this.synchronized { updated = true }
+    private var _updated: Boolean = false
+    private def setUpdated(): Unit = this.synchronized {
+        dataStoresMap foreach { idMap =>
+            val (id, map) = idMap
+            println(s"** $id")
+            map.printAll()
+        }
+        _updated = true
+    }
+    def isUpdated: Boolean = _updated
     private var dataStoresMap: Map[String, LocalInfoDataStore[_ <: java.io.Serializable]] =
         (dataStores map { idMap =>
             val (id, map0) = idMap
@@ -194,6 +203,6 @@ class GoogleDriveStorageProfile(
     }
 
     def createSession(manager: StorageSessionManager): GoogleDriveStorageSession = {
-        new GoogleDriveStorageSession(this, manager, getDriveService)
+        new GoogleDriveStorageSession(this, Path(applicationRoot), manager, getDriveService)
     }
 }

@@ -14,11 +14,12 @@ class LocalInfoDataStore[V <: Serializable](
         updatedNotifier: () => Unit
 ) extends DataStore[V] {
     private val map = new ConcurrentHashMap[String, V]()
-    private var _updated = false
+    private var _updated: Boolean = false
     private def setUpdated(): Unit = {
         this.synchronized { _updated = true }
         updatedNotifier()
     }
+    def isUpdated: Boolean = _updated
 
     initial foreach { kv => map.put(kv._1, kv._2) }
 

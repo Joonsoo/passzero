@@ -13,6 +13,7 @@ import org.eclipse.swt.layout.FormAttachment
 import org.eclipse.swt.layout.FormData
 import org.eclipse.swt.layout.FormLayout
 import org.eclipse.swt.layout.GridData
+import org.eclipse.swt.widgets.Button
 import org.eclipse.swt.widgets.Composite
 import org.eclipse.swt.widgets.Control
 import org.eclipse.swt.widgets.Label
@@ -30,6 +31,17 @@ trait WidgetUtil extends Composite {
     }
     def label(text: String, layoutData: AnyRef): Label =
         label(text, style = SWT.NONE, layoutData = layoutData)
+
+    def button(text: String, style: Int = SWT.NONE, layoutData: AnyRef = null): Button = {
+        val button = new Button(this, style)
+        button.setText(text)
+        if (layoutData != null) {
+            button.setLayoutData(layoutData)
+        }
+        button
+    }
+    def button(text: String, layoutData: AnyRef): Button =
+        button(text, style = SWT.NONE, layoutData = layoutData)
 }
 
 trait MessageBoxUtil extends Control {
