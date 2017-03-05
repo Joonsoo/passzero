@@ -8,6 +8,7 @@ import scala.util.Try
 import com.giyeok.passzero.LocalInfo
 import com.giyeok.passzero.LocalSecret
 import com.giyeok.passzero.PasswordUtils
+import com.giyeok.passzero.Session
 import com.giyeok.passzero.storage.StorageProfile
 import com.giyeok.passzero.storage.googledrive.GoogleDriveStorageProfile
 import com.giyeok.passzero.storage.local.LocalStorageProfile
@@ -40,24 +41,31 @@ class InitializationUI(val shell: Shell, parent: MainUI, style: Int, config: Con
 
     shell.setText(config.stringRegistry.get("InitializationUI"))
 
-    setLayout(new GridLayout(2, false))
+    setLayout(new GridLayout(3, false))
 
     label(config.stringRegistry.get("Master Password:"), leftLabel())
-    val password = new Text(this, SWT.PASSWORD | SWT.BORDER)
-    password.setLayoutData(horizontalFill())
+    private val password = new Text(this, SWT.PASSWORD | SWT.BORDER)
+    password.setLayoutData(horizontalFill(2))
 
     label(config.stringRegistry.get("Master Password Confirm:"), leftLabel())
-    val passwordConfirm = new Text(this, SWT.PASSWORD | SWT.BORDER)
-    passwordConfirm.setLayoutData(horizontalFill())
+    private val passwordConfirm = new Text(this, SWT.PASSWORD | SWT.BORDER)
+    passwordConfirm.setLayoutData(horizontalFill(2))
 
-    val tabFolder = new TabFolder(this, SWT.NONE)
-    tabFolder.setLayoutData(fillAll(horizontalSpan = 2))
+    label(config.stringRegistry.get("Secret Key:"), leftLabel())
+    private val secretKeyGenerationCheckBox = button(config.stringRegistry.get("New"), SWT.CHECK, leftest())
+    private val secretKey = new Text(this, SWT.BORDER)
+    secretKey.setLayoutData(horizontalFill())
+    secretKey.setEnabled(false)
+    secretKeyGenerationCheckBox.setSelection(true)
 
-    val finishBtn = new Button(this, SWT.NONE)
+    private val tabFolder = new TabFolder(this, SWT.NONE)
+    tabFolder.setLayoutData(fillAll(horizontalSpan = 3))
+
+    private val finishBtn = new Button(this, SWT.NONE)
     finishBtn.setText("Finish")
-    finishBtn.setLayoutData(rightest(2))
+    finishBtn.setLayoutData(rightest(3))
 
-    def tabItem[T <: Composite](composite: T, title: String): (T, TabItem) = {
+    private def tabItem[T <: Composite](composite: T, title: String): (T, TabItem) = {
         val tabItem = new TabItem(tabFolder, SWT.NONE)
         tabItem.setControl(composite)
         tabItem.setText(title)
@@ -80,8 +88,33 @@ class InitializationUI(val shell: Shell, parent: MainUI, style: Int, config: Con
         }
     }
 
+    secretKeyGenerationCheckBox.addSelectionListener(new SelectionListener {
+        def widgetSelected(e: SelectionEvent): Unit = {
+            secretKey.setEnabled(!secretKeyGenerationCheckBox.getSelection)
+        }
+
+        def widgetDefaultSelected(e: SelectionEvent): Unit = {
+            secretKey.setEnabled(!secretKeyGenerationCheckBox.getSelection)
+        }
+    })
+
     finishBtn.addSelectionListener(new SelectionListener {
         def widgetSelected(e: SelectionEvent): Unit = {
+            val localSecret: LocalSecret =
+                if (secretKeyGenerationCheckBox.getSelection) {
+                    LocalSecret.generateRandomLocalInfo()
+                } else {
+                    val secretKeyText = secretKey.getText.replaceAllLiterally(" ", "").replaceAllLiterally("-", "").replaceAllLiterally("_", "")
+                    if (secretKeyText forall { LocalSecret.encodingChars contains _ }) {
+                        if (secretKeyText.length == 104) {
+                            LocalSecret.fromAlphaDigits(secretKeyText)
+                        } else {
+                            throw new Exception("Wrong length of secret key text")
+                        }
+                    } else {
+                        throw new Exception("Invalid character in secret key")
+                    }
+                }
             if (password.getText == passwordConfirm.getText()) {
                 val passwordText = password.getText
 
@@ -94,11 +127,12 @@ class InitializationUI(val shell: Shell, parent: MainUI, style: Int, config: Con
                             case Success(storageProfile) =>
                                 showMessage(s"Creating local info file to ${config.localInfoFile.getCanonicalPath}; ${System.getProperty("java.home")}")
                                 try {
-                                    val localInfo = new LocalInfo(System.currentTimeMillis(), LocalSecret.generateRandomLocalInfo(), storageProfile)
+                                    val localInfo = new LocalInfo(System.currentTimeMillis(), localSecret, storageProfile)
                                     println(config.localInfoFile.getCanonicalPath)
                                     LocalInfo.save(passwordText, localInfo, config.localInfoFile)
 
                                     parent.init()
+                                    parent.pushEmergencyKit(localInfo)
                                 } catch {
                                     case exception: InvalidKeyException if exception.getMessage == "Illegal key size" =>
                                         val message = s"Illegal key size; solution here ${System.getProperty("java.home")}"

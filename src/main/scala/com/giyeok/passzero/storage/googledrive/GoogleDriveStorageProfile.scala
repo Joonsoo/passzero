@@ -98,6 +98,13 @@ class GoogleDriveStorageProfile(
 ) extends StorageProfile with DataStoreFactory {
     val name: String = GoogleDriveStorageProfile.name
 
+    def infoText: String =
+        s"""
+           |Google Drive
+           |applicationName: $applicationName
+           |applicationRoot: $applicationRoot
+         """.stripMargin.trim
+
     def toBytes: Array[Byte] = {
         val buf = new ByteBuf(100)
 

@@ -18,6 +18,7 @@ object MemoryStorageProfile extends StorageProfileSpec {
 
 class MemoryStorageProfile extends StorageProfile {
     val name: String = MemoryStorageProfile.name
+    def infoText: String = "Memory Storage"
 
     lazy val toBytes: Array[Byte] = MemoryStorageProfile.specString.toBytes
 

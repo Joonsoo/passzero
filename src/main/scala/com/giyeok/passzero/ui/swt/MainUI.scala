@@ -1,9 +1,12 @@
 package com.giyeok.passzero.ui.swt
 
+import com.giyeok.passzero.LocalInfo
 import com.giyeok.passzero.Session
 import com.giyeok.passzero.ui.Config
 import org.eclipse.swt.SWT
+import org.eclipse.swt.custom.StackLayout
 import org.eclipse.swt.layout.FillLayout
+import org.eclipse.swt.widgets.Canvas
 import org.eclipse.swt.widgets.Composite
 import org.eclipse.swt.widgets.Control
 
@@ -17,24 +20,48 @@ class MainUI(parent: Composite, style: Int, config: Config) extends Composite(pa
     // 6. system tray에도 아이콘을 표시하고, 트레이 아이콘을 누르면 UI가 화면에 나온다
     // - MainUI의 레이아웃은 FillLayout으로 하고 상태가 변경되면 기존의 컨트롤은 dispose한다
 
-    setLayout(new FillLayout)
+    private val stackLayout = new StackLayout
+    setLayout(stackLayout)
 
-    def replaceChild(contentFunc: MainUI => Control): Unit = {
-        getChildren foreach { _.dispose() }
-        contentFunc(this)
+    private var contentStack = List[Control]()
+
+    def push(contentFunc: MainUI => Control): Unit = {
+        val content = contentFunc(this)
+        contentStack = content +: contentStack
+        stackLayout.topControl = content
         requestLayout()
+    }
+
+    def pop(): Unit = {
+        val content = contentStack.head
+        contentStack = contentStack.tail
+        stackLayout.topControl = contentStack.head
+        content.dispose()
+        requestLayout()
+    }
+
+    def replaceTo(contentFunc: MainUI => Control): Unit = {
+        val content = contentFunc(this)
+        stackLayout.topControl = content
+        contentStack foreach { _.dispose() }
+        contentStack = List(content)
+        requestLayout()
+    }
+
+    def pushEmergencyKit(localInfo: LocalInfo): Unit = {
+        push(new EmergencyKitUI(getShell, _, SWT.NONE, localInfo, config))
+    }
+
+    def sessionInitialized(session: Session): Unit = {
+        replaceTo(new PasswordListUI(getShell, _, SWT.NONE, session, config))
     }
 
     def init(): Unit = {
         if (!config.localInfoFile.exists()) {
-            replaceChild(new InitializationUI(getShell, _, SWT.NONE, config))
+            replaceTo(new InitializationUI(getShell, _, SWT.NONE, config))
         } else {
-            replaceChild(new MasterPasswordUI(getShell, _, SWT.NONE, config))
+            replaceTo(new MasterPasswordUI(getShell, _, SWT.NONE, config))
         }
-    }
-
-    def sessionInitialized(session: Session): Unit = {
-        replaceChild(new PasswordListUI(getShell, _, SWT.NONE, session, config))
     }
 
     init()

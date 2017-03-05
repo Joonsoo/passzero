@@ -23,6 +23,11 @@ object LocalStorageProfile extends StorageProfileSpec {
 
 class LocalStorageProfile(rootDirectory: File) extends StorageProfile {
     val name: String = LocalStorageProfile.name
+    def infoText: String =
+        s"""
+            |Local Storage
+            |root=${rootDirectory.getCanonicalPath}
+          """.stripMargin.trim
 
     def toBytes: Array[Byte] = rootDirectory.getCanonicalPath.toBytes
 

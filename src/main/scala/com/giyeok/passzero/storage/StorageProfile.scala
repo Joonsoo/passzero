@@ -17,6 +17,7 @@ object StorageProfile {
 // TODO StorageProfile에서 toBytes가 변경될 상황이 생기면 LocalInfo를 새로 저장해야 함
 trait StorageProfile {
     val name: String
+    def infoText: String
     def toBytes: Array[Byte]
     def createSession(manager: StorageSessionManager): StorageSession
 }

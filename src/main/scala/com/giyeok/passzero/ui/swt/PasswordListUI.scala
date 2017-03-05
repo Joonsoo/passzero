@@ -21,6 +21,8 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
     private val loadBtn = button("Load")
     private val copyBtn = button("Copy")
 
+    private val emergencyKitBtn = button("Emergency Kit", rightest(3))
+
     saveBtn.addSelectionListener(new SelectionListener {
         def widgetSelected(e: SelectionEvent): Unit = {
             session.put(Path("hello"), "helloworld".toBytes)
@@ -47,6 +49,14 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
             session.getAsString(Path("hello")) foreach { s =>
                 putTextToClipboard(s.content, Some(30.seconds))
             }
+        }
+
+        def widgetDefaultSelected(e: SelectionEvent): Unit = {}
+    })
+
+    emergencyKitBtn.addSelectionListener(new SelectionListener {
+        def widgetSelected(e: SelectionEvent): Unit = {
+            parent.pushEmergencyKit(session.localInfo)
         }
 
         def widgetDefaultSelected(e: SelectionEvent): Unit = {}
