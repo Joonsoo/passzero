@@ -86,7 +86,7 @@ class InitializationUI(val shell: Shell, parent: MainUI, style: Int, config: Con
                             case Success(storageProfile) =>
                                 showMessage(s"Creating local info file to ${config.localInfoFile.getCanonicalPath}; ${System.getProperty("java.home")}")
                                 try {
-                                    val localInfo = new LocalInfo(LocalSecret.generateRandomLocalInfo(), storageProfile)
+                                    val localInfo = new LocalInfo(System.currentTimeMillis(), LocalSecret.generateRandomLocalInfo(), storageProfile)
                                     println(config.localInfoFile.getCanonicalPath)
                                     LocalInfo.save(passwordText, localInfo, config.localInfoFile)
 

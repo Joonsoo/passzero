@@ -11,7 +11,7 @@ object Main {
 
         val password = "starbucks_apple_samsung_television_coffee"
 
-        val session = new Session(password, localKeys, new MemoryStorageProfile)
+        val session = new Session(0, password, localKeys, new MemoryStorageProfile)
 
         val localSave = LocalInfo.save(password, session.localInfo)
         localSave.printHexMatrix()

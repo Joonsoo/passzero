@@ -25,7 +25,7 @@ object Session {
         }
 
         // TODO Session에서 storageProfile이 변경될 때 localInfoFile을 업데이트할 수 있도록 Session이 localInfoFile에 대한 정보를 갖고 있어야 한다
-        new Session(password, localInfo.localSecret, localInfo.storageProfile)
+        new Session(localInfo.revision, password, localInfo.localSecret, localInfo.storageProfile)
     }
 }
 
@@ -35,9 +35,9 @@ class StorageSessionManager(_storageProfile: StorageProfile) {
     def storageSession(): StorageSession = this.synchronized { _session }
 }
 
-class Session(password: String, localKeys: LocalSecret, storageSessionManager: StorageSessionManager) {
-    def this(password: String, localKeys: LocalSecret, storageProfile: StorageProfile) =
-        this(password, localKeys, new StorageSessionManager(storageProfile))
+class Session(revision: Long, password: String, localKeys: LocalSecret, storageSessionManager: StorageSessionManager) {
+    def this(revision: Long, password: String, localKeys: LocalSecret, storageProfile: StorageProfile) =
+        this(revision, password, localKeys, new StorageSessionManager(storageProfile))
 
     private val secretKey: Array[Byte] = {
         // (password: String, pwSalt: Array[Byte], localKey: Array[Byte])
@@ -50,7 +50,7 @@ class Session(password: String, localKeys: LocalSecret, storageSessionManager: S
     // TODO StorageSession에서 필요에 의해 session의 storage가 변경되어야 할 수도 있다
     def storage: StorageSession = storageSessionManager.storageSession()
 
-    def localInfo: LocalInfo = new LocalInfo(localKeys, storage.profile)
+    def localInfo: LocalInfo = new LocalInfo(revision, localKeys, storage.profile)
 
     def encode(array: Array[Byte]): (InitVec, Array[Byte]) = {
         val iv = InitVec.generate()

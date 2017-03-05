@@ -18,6 +18,7 @@ object LocalInfo {
     // 첫 4바이트는 매직넘버 GYPZ
     // 그 다음 2바이트는 버젼값. 기본 0001
     // 그 다음 8바이트는 이 파일이 저장된 시점의 timestamp(참고정보)
+    // 그 다음 8바이트는 revision number
 
     // 그 다음 32바이트는 LocalInfo용 password hash salt
     //  - 이 salt를 이용해 password로 LocalInfo 해석을 위한 키를 만든다
@@ -38,6 +39,7 @@ object LocalInfo {
         buf.writeBytes(Seq[Byte]('G', 'Y', 'P', 'Z'))
         buf.writeBytes(Seq[Byte](0, 1))
         buf.writeLong(timestamp.date)
+        buf.writeLong(localInfo.revision)
 
         val (pwHash, pwSalt) = Security.PasswordHash.generateHashAndSalt(password)
         buf.writeBytes(pwSalt) ensuring pwSalt.length == 32
@@ -83,6 +85,7 @@ object LocalInfo {
             versionNum match {
                 case Seq(0, 1) =>
                     val timestamp = Timestamp(reader.readLong())
+                    val revision = reader.readLong()
                     val localInfoSalt = reader.readBytes(32)
                     val localInfoIv = InitVec(reader.readBytes(InitVec.length))
                     assert(localInfoSalt.length == 32)
@@ -98,7 +101,7 @@ object LocalInfo {
                     val storageProfileType = storageProfileTypeBytes.asString
                     val storageProfile = StorageProfile.fromBytes(storageProfileType, storageProfileContent.tail)
 
-                    (timestamp, new LocalInfo(localKeys, storageProfile))
+                    (timestamp, new LocalInfo(revision, localKeys, storageProfile))
 
                 case _ =>
                     throw LoadException(s"unknown version number: $versionNum")
@@ -146,4 +149,4 @@ case class Timestamp(date: Long) extends AnyVal {
 }
 
 // TODO storageProfile에서 업데이트할 필요가 있을 때 LocalInfo를 호출해서 업데이트할 수 있게 하는 경로 추가
-class LocalInfo(val localSecret: LocalSecret, val storageProfile: StorageProfile)
+class LocalInfo(val revision: Long, val localSecret: LocalSecret, val storageProfile: StorageProfile)

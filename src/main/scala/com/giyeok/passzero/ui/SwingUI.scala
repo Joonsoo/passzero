@@ -107,7 +107,7 @@ object SwingUI {
 
             JOptionPane.showMessageDialog(this, s"Creating local info file to ${config.localInfoFile.getCanonicalPath}; ${System.getProperty("java.home")}")
             try {
-                val localInfo = new LocalInfo(LocalSecret.generateRandomLocalInfo(), new MemoryStorageProfile)
+                val localInfo = new LocalInfo(System.currentTimeMillis(), LocalSecret.generateRandomLocalInfo(), new MemoryStorageProfile)
                 println(config.localInfoFile.getCanonicalPath)
                 LocalInfo.save(password, localInfo, config.localInfoFile)
 
