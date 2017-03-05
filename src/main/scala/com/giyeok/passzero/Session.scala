@@ -61,8 +61,9 @@ class Session(revision: Long, password: String, localKeys: LocalSecret, storageS
         AES256CBC.decode(source, secretKey, initVec)
     }
 
-    def list(path: Path): Seq[EntityMeta] = {
+    def list(path: Path): Stream[EntityMeta] = {
         // storage에서 (디렉토리) path 하위 Path들 목록
+        // TODO paging되는 경우 정보를 얻어오는대로 전달한다
         storage.list(path)
     }
 

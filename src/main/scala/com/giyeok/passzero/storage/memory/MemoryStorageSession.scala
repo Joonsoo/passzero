@@ -13,7 +13,7 @@ class MemoryStorageSession(val profile: MemoryStorageProfile) extends StorageSes
     val map: MutableMap[Path, (EntityMeta, Array[Byte])] =
         MutableMap[Path, (EntityMeta, Array[Byte])]()
 
-    override def list(path: Path): Seq[EntityMeta] = ???
+    override def list(path: Path): Stream[EntityMeta] = ???
 
     override def get(path: Path): Option[Entity[Array[Byte]]] =
         map get path map { p => Entity(p._1, p._2) }
