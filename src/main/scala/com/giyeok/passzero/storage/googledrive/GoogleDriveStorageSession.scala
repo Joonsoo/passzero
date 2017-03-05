@@ -1,5 +1,6 @@
 package com.giyeok.passzero.storage.googledrive
 
+import com.giyeok.passzero.StorageSessionManager
 import com.giyeok.passzero.storage.Entity
 import com.giyeok.passzero.storage.EntityMeta
 import com.giyeok.passzero.storage.Path
@@ -9,6 +10,7 @@ import com.google.api.services.drive.Drive
 
 class GoogleDriveStorageSession(
         val profile: StorageProfile,
+        val manager: StorageSessionManager,
         drive: Drive
 ) extends StorageSession {
     def list(path: Path): Seq[EntityMeta] = ???

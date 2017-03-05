@@ -1,7 +1,6 @@
 package com.giyeok.passzero.ui.swt
 
 import java.io.File
-import org.json4s.native.JsonMethods._
 import java.security.InvalidKeyException
 import scala.util.Failure
 import scala.util.Success
@@ -11,7 +10,6 @@ import com.giyeok.passzero.LocalSecret
 import com.giyeok.passzero.PasswordUtils
 import com.giyeok.passzero.storage.StorageProfile
 import com.giyeok.passzero.storage.googledrive.GoogleDriveStorageProfile
-import com.giyeok.passzero.storage.memory.MemoryStorageProfile
 import com.giyeok.passzero.ui.Config
 import org.eclipse.swt.SWT
 import org.eclipse.swt.events.SelectionEvent
@@ -25,6 +23,7 @@ import org.eclipse.swt.widgets.Shell
 import org.eclipse.swt.widgets.TabFolder
 import org.eclipse.swt.widgets.TabItem
 import org.eclipse.swt.widgets.Text
+import org.json4s.native.JsonMethods._
 
 class InitializationUI(val shell: Shell, parent: MainUI, style: Int, config: Config)
         extends Composite(parent, style) with WidgetUtil with MessageBoxUtil with GridLayoutUtil {
@@ -146,6 +145,11 @@ class GoogleDriveStorageProfileTab(shell: Shell, parent: TabFolder, style: Int, 
         def widgetDefaultSelected(e: SelectionEvent): Unit = {}
     })
 
+    label(config.stringRegistry.get("Application Root"), leftLabel())
+    private val appRootText = new Text(this, SWT.BORDER)
+    appRootText.setLayoutData(horizontalFill(2))
+    appRootText.setText("/passzero")
+
     def storageProfile(): StorageProfile = {
         val applicationName = appNameText.getText
         if (applicationName.isEmpty) {
@@ -153,13 +157,19 @@ class GoogleDriveStorageProfileTab(shell: Shell, parent: TabFolder, style: Int, 
         }
         // TODO applicationName 추가 검증
 
+        val applicationRoot = appRootText.getText
+        if (applicationRoot.isEmpty) {
+            throw new Exception("Application root is empty")
+        }
+        // TODO applicationRoot 추가 검증
+
         val clientSecretJson = clientSecretJsonPath.getText
         if (clientSecretJson.isEmpty) {
             throw new Exception("client_secret.json not set")
         }
         val clientSecretJsonFile = new File(clientSecretJson)
         val json = parse(clientSecretJsonFile)
-        new GoogleDriveStorageProfile(applicationName, json, Map())
+        new GoogleDriveStorageProfile(applicationName, applicationRoot, json, Map())
     }
 }
 

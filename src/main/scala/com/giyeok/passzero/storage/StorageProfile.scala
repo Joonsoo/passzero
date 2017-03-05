@@ -1,5 +1,7 @@
 package com.giyeok.passzero.storage
 
+import com.giyeok.passzero.StorageSessionManager
+
 object StorageProfile {
     def fromBytes(storageType: String, bytes: Array[Byte]): StorageProfile = {
         Storages.types get storageType match {
@@ -16,5 +18,5 @@ object StorageProfile {
 trait StorageProfile {
     val name: String
     def toBytes: Array[Byte]
-    def createSession(): StorageSession
+    def createSession(manager: StorageSessionManager): StorageSession
 }

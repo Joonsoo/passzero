@@ -84,8 +84,10 @@ class MasterPasswordUI(val shell: Shell, parent: MainUI, style: Int, config: Con
                     case Failure(exception) =>
                         // TODO Illegal Key Size는 특별 처리(설치 방법 안내)
                         exception match {
-                            case exception: Exception =>
-                                showMessage(s"${exception.getMessage}; ${System.getProperty("java.home")}")
+                            case throwable: Throwable =>
+                                throwable.printStackTrace()
+                                // showMessage(s"${throwable.getMessage}; ${System.getProperty("java.home")}")
+                                showMessage(config.stringRegistry.get("Error while loading. Check your password again"))
                                 password.setFocus()
                         }
                 }

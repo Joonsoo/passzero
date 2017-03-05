@@ -1,5 +1,6 @@
 package com.giyeok.passzero.storage.memory
 
+import com.giyeok.passzero.StorageSessionManager
 import com.giyeok.passzero.storage.StorageProfile
 import com.giyeok.passzero.storage.StorageProfileSpec
 import com.giyeok.passzero.utils.ByteArrayUtil._
@@ -20,6 +21,6 @@ class MemoryStorageProfile extends StorageProfile {
 
     lazy val toBytes: Array[Byte] = MemoryStorageProfile.specString.toBytes
 
-    def createSession(): MemoryStorageSession =
+    def createSession(manager: StorageSessionManager): MemoryStorageSession =
         new MemoryStorageSession(this)
 }

@@ -30,9 +30,9 @@ object Session {
 }
 
 class StorageSessionManager(_storageProfile: StorageProfile) {
-    private var _session = _storageProfile.createSession()
+    private var _session = _storageProfile.createSession(this)
 
-    def storageSession(): StorageSession = _session
+    def storageSession(): StorageSession = this.synchronized { _session }
 }
 
 class Session(password: String, localKeys: LocalSecret, storageSessionManager: StorageSessionManager) {

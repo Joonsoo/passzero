@@ -7,17 +7,26 @@ import scala.collection.JavaConverters._
 import com.google.api.client.util.store.DataStore
 import com.google.api.client.util.store.DataStoreFactory
 
-class LocalInfoDataStore[V <: Serializable](val id: String, initial: Map[String, V]) extends DataStore[V] {
+class LocalInfoDataStore[V <: Serializable](
+        val id: String,
+        initial: Map[String, V],
+        factory: DataStoreFactory,
+        updatedNotifier: () => Unit
+) extends DataStore[V] {
     private val map = new ConcurrentHashMap[String, V]()
     private var _updated = false
+    private def setUpdated(): Unit = {
+        this.synchronized { _updated = true }
+        updatedNotifier()
+    }
 
     initial foreach { kv => map.put(kv._1, kv._2) }
 
-    def getDataStoreFactory: DataStoreFactory = LocalInfoDataStoreFactory
+    def getDataStoreFactory: DataStoreFactory = factory
 
     def set(key: String, value: V): DataStore[V] = {
         map.put(key, value)
-        this.synchronized { _updated = true }
+        setUpdated()
         this
     }
 
@@ -33,7 +42,7 @@ class LocalInfoDataStore[V <: Serializable](val id: String, initial: Map[String,
 
     def clear(): DataStore[V] = {
         map.clear()
-        this.synchronized { _updated = true }
+        setUpdated()
         this
     }
 
@@ -43,7 +52,7 @@ class LocalInfoDataStore[V <: Serializable](val id: String, initial: Map[String,
 
     def delete(key: String): DataStore[V] = {
         map.remove(key)
-        this.synchronized { _updated = true }
+        setUpdated()
         this
     }
 
@@ -70,9 +79,4 @@ class LocalInfoDataStore[V <: Serializable](val id: String, initial: Map[String,
         }
         println("================")
     }
-}
-
-object LocalInfoDataStoreFactory extends DataStoreFactory {
-    def getDataStore[V <: Serializable](id: String): DataStore[V] =
-        new LocalInfoDataStore[V](id, Map())
 }

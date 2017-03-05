@@ -1,5 +1,6 @@
 package com.giyeok.passzero.storage.googledrive
 
+import java.io
 import java.io.FileInputStream
 import java.io.InputStreamReader
 import scala.collection.JavaConverters._
@@ -12,6 +13,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
 import com.google.api.client.http.HttpTransport
 import com.google.api.client.json.jackson2.JacksonFactory
+import com.google.api.client.util.store.DataStore
 import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
@@ -21,7 +23,23 @@ object GoogleDrivePractice {
 
     val applicationName = "passzero_app"
 
-    private val dataStoreFactory: DataStoreFactory = LocalInfoDataStoreFactory
+    private val dataStoreFactory: DataStoreFactory = {
+        class DsFactory extends DataStoreFactory {
+            private var map = Map[String, LocalInfoDataStore[_]]()
+
+            private def setUpdate(): Unit = {}
+            def getDataStore[V <: io.Serializable](id: String): DataStore[V] = this.synchronized {
+                map get id match {
+                    case Some(ds) => ds.asInstanceOf[DataStore[V]]
+                    case None =>
+                        val ds = new LocalInfoDataStore[V](id, Map(), this, this.setUpdate)
+                        map += id -> ds
+                        ds
+                }
+            }
+        }
+        new DsFactory()
+    }
     // MemoryDataStoreFactory.getDefaultInstance
     // new FileDataStoreFactory(dataStoreDir)
 

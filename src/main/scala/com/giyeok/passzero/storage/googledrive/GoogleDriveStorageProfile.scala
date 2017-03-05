@@ -1,9 +1,11 @@
 package com.giyeok.passzero.storage.googledrive
 
+import java.io
 import java.io.InputStreamReader
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import scala.collection.JavaConverters._
+import com.giyeok.passzero.StorageSessionManager
 import com.giyeok.passzero.storage.StorageProfile
 import com.giyeok.passzero.storage.StorageProfileSpec
 import com.giyeok.passzero.utils.ByteArrayUtil._
@@ -19,12 +21,14 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
 import com.google.api.client.json.jackson2.JacksonFactory
+import com.google.api.client.util.store.DataStore
 import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
 import org.json4s.DefaultFormats
 import org.json4s._
 import org.json4s.native.JsonMethods._
+import scala.language.existentials
 
 object GoogleDriveStorageProfile extends StorageProfileSpec {
     implicit val formats = DefaultFormats
@@ -41,6 +45,10 @@ object GoogleDriveStorageProfile extends StorageProfileSpec {
         val applicationNameLength = reader.readInt()
         val applicationNameBytes = reader.readBytes(applicationNameLength)
         val applicationName = applicationNameBytes.asString
+
+        val applicationRootLength = reader.readInt()
+        val applicationRootBytes = reader.readBytes(applicationRootLength)
+        val applicationRoot = applicationRootBytes.asString
 
         val clientSecretLength = reader.readInt()
         val clientSecretBytes = reader.readBytes(clientSecretLength)
@@ -73,15 +81,20 @@ object GoogleDriveStorageProfile extends StorageProfileSpec {
             dataStoreId -> map
         }).toMap
 
-        if (!reader.done) {
+        if (!reader.isFinished) {
             throw new Exception("Invalid storage profile")
         }
 
-        new GoogleDriveStorageProfile(applicationName, clientSecret, dataStores)
+        new GoogleDriveStorageProfile(applicationName, applicationRoot, clientSecret, dataStores)
     }
 }
 
-class GoogleDriveStorageProfile(applicationName: String, clientSecret: JValue, dataStores: Map[String, Map[String, java.io.Serializable]]) extends StorageProfile {
+class GoogleDriveStorageProfile(
+        applicationName: String,
+        applicationRoot: String,
+        clientSecret: JValue,
+        dataStores: Map[String, Map[String, java.io.Serializable]]
+) extends StorageProfile with DataStoreFactory {
     val name: String = GoogleDriveStorageProfile.name
 
     def toBytes: Array[Byte] = {
@@ -92,6 +105,10 @@ class GoogleDriveStorageProfile(applicationName: String, clientSecret: JValue, d
         val applicationNameBytes = applicationName.toBytes
         buf.writeInt(applicationNameBytes.length)
         buf.writeBytes(applicationNameBytes)
+
+        val applicationRootBytes = applicationRoot.toBytes
+        buf.writeInt(applicationRootBytes.length)
+        buf.writeBytes(applicationRootBytes)
 
         val clientSecretBytes = compact(render(clientSecret)).toBytes
         buf.writeInt(clientSecretBytes.length)
@@ -127,11 +144,30 @@ class GoogleDriveStorageProfile(applicationName: String, clientSecret: JValue, d
         buf.finish()
     }
 
+    private var updated: Boolean = false
+    private def setUpdated(): Unit = this.synchronized { updated = true }
+    private var dataStoresMap: Map[String, LocalInfoDataStore[_ <: java.io.Serializable]] =
+        (dataStores map { idMap =>
+            val (id, map0) = idMap
+            val map: Map[String, T forSome { type T <: java.io.Serializable }] = map0
+            val ds = new LocalInfoDataStore[T forSome { type T <: java.io.Serializable }](id, map, this, setUpdated)
+            id -> ds
+        }).toMap
+    def getDataStore[V <: io.Serializable](id: String): DataStore[V] = this.synchronized {
+        dataStoresMap get id match {
+            case Some(ds) => ds.asInstanceOf[DataStore[V]]
+            case None =>
+                val ds = new LocalInfoDataStore[V](id, Map(), this, setUpdated)
+                dataStoresMap += id -> ds
+                ds
+        }
+    }
+
     // TODO dataStoreFactory 에 의해서 dataStores에 변경사항이 생기면 LocalInfo에 반영해서 저장해야 함
-    private lazy val dataStoreFactory: DataStoreFactory = ???
+    private lazy val dataStoreFactory: DataStoreFactory = this
     private lazy val jsonFactory = JacksonFactory.getDefaultInstance
     private lazy val httpTransport = GoogleNetHttpTransport.newTrustedTransport()
-    private lazy val scopes = Seq(DriveScopes.DRIVE_METADATA_READONLY).asJava
+    private lazy val scopes = Seq(DriveScopes.DRIVE_FILE).asJava
 
     def authorize(): Credential = {
         val in = new BytesInputStream(compact(render(clientSecret)).toBytes)
@@ -157,7 +193,7 @@ class GoogleDriveStorageProfile(applicationName: String, clientSecret: JValue, d
             .build()
     }
 
-    def createSession(): GoogleDriveStorageSession = {
-        new GoogleDriveStorageSession(this, getDriveService)
+    def createSession(manager: StorageSessionManager): GoogleDriveStorageSession = {
+        new GoogleDriveStorageSession(this, manager, getDriveService)
     }
 }

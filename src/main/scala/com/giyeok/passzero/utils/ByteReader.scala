@@ -6,7 +6,7 @@ class ByteReader(array: Array[Byte], offset: Int = 0) {
     private var _pointer = offset
 
     def pointer: Int = _pointer
-    def done: Boolean = pointer == array.length
+    def isFinished: Boolean = pointer == array.length
 
     def read(): Byte = {
         val b = array(_pointer)
