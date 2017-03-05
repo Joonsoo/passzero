@@ -27,5 +27,5 @@ class LocalStorageProfile(rootDirectory: File) extends StorageProfile {
     def toBytes: Array[Byte] = rootDirectory.getCanonicalPath.toBytes
 
     def createSession(manager: StorageSessionManager): LocalStorageSession =
-        new LocalStorageSession(this, manager)
+        new LocalStorageSession(this, rootDirectory, manager)
 }

@@ -12,8 +12,8 @@ import org.eclipse.swt.widgets.Composite
 import org.eclipse.swt.widgets.Shell
 import com.giyeok.passzero.utils.ByteArrayUtil._
 
-class PasswordListUI(private val shell: Shell, parent: MainUI, style: Int, session: Session, config: Config)
-        extends Composite(parent, style) with WidgetUtil with ClipboardUtil with GridLayoutUtil {
+class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Session, config: Config)
+        extends Composite(parent, style) with WidgetUtil with ClipboardUtil with GridLayoutUtil with MessageBoxUtil {
     shell.setText(config.stringRegistry.get("PasswordListUI"))
     setLayout(new GridLayout(3, false))
 
@@ -23,7 +23,7 @@ class PasswordListUI(private val shell: Shell, parent: MainUI, style: Int, sessi
 
     saveBtn.addSelectionListener(new SelectionListener {
         def widgetSelected(e: SelectionEvent): Unit = {
-            session.put(Path("hello?"), "helloworld".toBytes)
+            session.put(Path("hello"), "helloworld".toBytes)
         }
 
         def widgetDefaultSelected(e: SelectionEvent): Unit = {}
@@ -33,6 +33,10 @@ class PasswordListUI(private val shell: Shell, parent: MainUI, style: Int, sessi
         def widgetSelected(e: SelectionEvent): Unit = {
             val list = session.list(Path(""))
             list foreach println
+
+            session.getAsString(Path("hello")) foreach { s =>
+                showMessage(s.content)
+            }
         }
 
         def widgetDefaultSelected(e: SelectionEvent): Unit = {}
@@ -40,7 +44,9 @@ class PasswordListUI(private val shell: Shell, parent: MainUI, style: Int, sessi
 
     copyBtn.addSelectionListener(new SelectionListener {
         def widgetSelected(e: SelectionEvent): Unit = {
-            putTextToClipboard(new String((Random.alphanumeric take 5).toArray), Some(30.seconds))
+            session.getAsString(Path("hello")) foreach { s =>
+                putTextToClipboard(s.content, Some(30.seconds))
+            }
         }
 
         def widgetDefaultSelected(e: SelectionEvent): Unit = {}

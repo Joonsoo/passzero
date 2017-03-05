@@ -19,7 +19,7 @@ class GoogleDriveStorageSession(
     def list(path: Path): Stream[EntityMeta] = {
         val list = drive.files().list().execute()
         list.getFiles.iterator().asScala.toStream map { f =>
-            EntityMeta(path \ f.getName, Map("id" -> f.getId))
+            EntityMeta(path \ f.getName, f.getId, Map())
         }
     }
 

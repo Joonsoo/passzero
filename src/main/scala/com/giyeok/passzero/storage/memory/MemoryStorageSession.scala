@@ -13,22 +13,22 @@ class MemoryStorageSession(val profile: MemoryStorageProfile) extends StorageSes
     val map: MutableMap[Path, (EntityMeta, Array[Byte])] =
         MutableMap[Path, (EntityMeta, Array[Byte])]()
 
-    override def list(path: Path): Stream[EntityMeta] = ???
+    def list(path: Path): Stream[EntityMeta] = ???
 
-    override def get(path: Path): Option[Entity[Array[Byte]]] =
+    def get(path: Path): Option[Entity[Array[Byte]]] =
         map get path map { p => Entity(p._1, p._2) }
 
-    override def putContent(path: Path, content: Array[Byte]): Unit =
+    def putContent(path: Path, content: Array[Byte]): Unit =
         map get path match {
             case Some((meta, _)) =>
                 map(path) = (meta, content)
             case None =>
-                map(path) = (EntityMeta(path, Map()), content)
+                map(path) = (EntityMeta(path, path.string, Map()), content)
         }
 
-    override def delete(path: Path, recursive: Boolean): Boolean = ???
+    def delete(path: Path, recursive: Boolean): Boolean = ???
 
-    override def mkdir(path: Path, recursive: Boolean): Unit = ???
+    def mkdir(path: Path, recursive: Boolean): Unit = ???
 
     def printHexMatrixOfFile(path: Path): Unit = {
         get(path) foreach { entity =>
