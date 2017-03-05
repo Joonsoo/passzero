@@ -10,6 +10,7 @@ import com.giyeok.passzero.LocalSecret
 import com.giyeok.passzero.PasswordUtils
 import com.giyeok.passzero.storage.StorageProfile
 import com.giyeok.passzero.storage.googledrive.GoogleDriveStorageProfile
+import com.giyeok.passzero.storage.local.LocalStorageProfile
 import com.giyeok.passzero.ui.Config
 import org.eclipse.swt.SWT
 import org.eclipse.swt.events.SelectionEvent
@@ -18,6 +19,7 @@ import org.eclipse.swt.graphics.Color
 import org.eclipse.swt.layout.GridLayout
 import org.eclipse.swt.widgets.Button
 import org.eclipse.swt.widgets.Composite
+import org.eclipse.swt.widgets.DirectoryDialog
 import org.eclipse.swt.widgets.FileDialog
 import org.eclipse.swt.widgets.Shell
 import org.eclipse.swt.widgets.TabFolder
@@ -62,8 +64,14 @@ class InitializationUI(val shell: Shell, parent: MainUI, style: Int, config: Con
         (composite, tabItem)
     }
 
-    private val (googleStorageProfileTab, _) = tabItem(new GoogleDriveStorageProfileTab(shell, tabFolder, SWT.NONE, config), config.stringRegistry.get("Google Drive"))
-    private val (localStorageProfileTab, _) = tabItem(new LocalStorageProfileTab(tabFolder, SWT.NONE, config), config.stringRegistry.get("Local Storage"))
+    private val (googleStorageProfileTab, _) = tabItem(
+        new GoogleDriveStorageProfileTab(shell, tabFolder, SWT.NONE, config),
+        config.stringRegistry.get("Google Drive")
+    )
+    private val (localStorageProfileTab, _) = tabItem(
+        new LocalStorageProfileTab(shell, tabFolder, SWT.NONE, config),
+        config.stringRegistry.get("Local Storage")
+    )
 
     private def createStorageProfile(): StorageProfile = {
         tabFolder.getSelectionIndex match {
@@ -150,7 +158,7 @@ class GoogleDriveStorageProfileTab(shell: Shell, parent: TabFolder, style: Int, 
     appRootText.setLayoutData(horizontalFill(2))
     appRootText.setText("/passzero")
 
-    def storageProfile(): StorageProfile = {
+    def storageProfile(): GoogleDriveStorageProfile = {
         val applicationName = appNameText.getText
         if (applicationName.isEmpty) {
             throw new Exception("application name is empty")
@@ -173,16 +181,50 @@ class GoogleDriveStorageProfileTab(shell: Shell, parent: TabFolder, style: Int, 
     }
 }
 
-class LocalStorageProfileTab(parent: Composite, style: Int, config: Config)
+class LocalStorageProfileTab(shell: Shell, parent: Composite, style: Int, config: Config)
         extends Composite(parent, style) with WidgetUtil with GridLayoutUtil with FontUtil {
-    setLayout(new GridLayout(1, false))
+    setLayout(new GridLayout(3, false))
 
-    private val warningLabel = label(config.stringRegistry.get("!!! Not Recommended !!!"), horizontalFill())
+    private val warningLabel = label(config.stringRegistry.get("!!! Not Recommended !!!"), horizontalFill(3))
     private val redColor = new Color(getDisplay, 255, 0, 0)
     private val warningFont = modifyFont(warningLabel.getFont, 20, SWT.BOLD)
     warningLabel.setFont(warningFont)
     warningLabel.setForeground(redColor)
     warningLabel.setAlignment(SWT.CENTER)
 
-    def storageProfile(): StorageProfile = ???
+    label(config.stringRegistry.get("Root Directory:"), leftLabel())
+    private val rootDirectoryPath = new Text(this, SWT.READ_ONLY | SWT.BORDER)
+    rootDirectoryPath.setLayoutData(horizontalFill())
+
+    private val rootDirectoryDialogButton = new Button(this, SWT.NONE)
+    rootDirectoryDialogButton.setLayoutData(rightest())
+    rootDirectoryDialogButton.setText(config.stringRegistry.get("Choose.."))
+
+    rootDirectoryDialogButton.addSelectionListener(new SelectionListener {
+        def widgetSelected(e: SelectionEvent): Unit = {
+            val dd = new DirectoryDialog(shell, SWT.OPEN)
+            dd.setText(config.stringRegistry.get("Root Directory"))
+            val selected = dd.open()
+            if (selected != null) {
+                rootDirectoryPath.setText(selected)
+            }
+        }
+
+        def widgetDefaultSelected(e: SelectionEvent): Unit = {}
+    })
+
+    def storageProfile(): LocalStorageProfile = {
+        val root = rootDirectoryPath.getText
+        if (root.isEmpty) {
+            throw new Exception(config.stringRegistry.get("root directory is empty"))
+        }
+        val file = new File(root)
+        if (!file.exists()) {
+            throw new Exception("LocalStorage root does not exist!")
+        }
+        if (!file.isDirectory) {
+            throw new Exception("LocalStorage root must be a directory")
+        }
+        new LocalStorageProfile(file)
+    }
 }
