@@ -3,6 +3,8 @@ package com.giyeok.passzero.storage.local
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 import com.giyeok.passzero.StorageSessionManager
 import com.giyeok.passzero.storage.Entity
 import com.giyeok.passzero.storage.EntityMeta
@@ -15,17 +17,22 @@ class LocalStorageSession(
         rootDirectory: File,
         manager: StorageSessionManager
 ) extends StorageSession {
+    private implicit val ec = ExecutionContext.global
+
     def pathFile(path: Path): File =
         new File(rootDirectory, path.string)
 
-    def list(path: Path): Stream[EntityMeta] = {
-        pathFile(path).list().toStream map { name =>
-            val p = path \ name
-            EntityMeta(p, p.string, Map())
-        }
+    def list(path: Path): Stream[Future[Seq[EntityMeta]]] = {
+        //        pathFile(path).list().toStream map { name =>
+        //            val p = path / name
+        //            EntityMeta(p, p.string, Map())
+        //        }
+        ???
     }
 
-    def get(path: Path): Option[Entity[Array[Byte]]] = {
+    def getMeta(path: Path): Future[Option[EntityMeta]] = ???
+
+    def get(path: Path): Future[Option[Entity[Array[Byte]]]] = Future {
         val f = pathFile(path)
         if (f.exists()) {
             val is = new FileInputStream(f)
@@ -41,7 +48,7 @@ class LocalStorageSession(
         }
     }
 
-    def putContent(path: Path, content: Array[Byte]): Unit = {
+    def putContent(path: Path, content: Array[Byte]): Future[Unit] = Future {
         val f = pathFile(path)
         val os = new FileOutputStream(f)
         try {
@@ -51,7 +58,7 @@ class LocalStorageSession(
         }
     }
 
-    def delete(path: Path, recursive: Boolean): Boolean = ???
+    def delete(path: Path, recursive: Boolean): Future[Boolean] = ???
 
-    def mkdir(path: Path, recursive: Boolean): Unit = ???
+    def mkdir(path: Path, recursive: Boolean): Future[Unit] = ???
 }

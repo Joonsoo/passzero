@@ -1,6 +1,6 @@
 package com.giyeok.passzero.storage
 
-class Path(path: Seq[String]) {
+class Path(val path: Seq[String]) {
     assert(path forall { s => !s.contains('/') })
     assert(path forall { s => s != "." && s != ".." })
 
@@ -8,7 +8,8 @@ class Path(path: Seq[String]) {
 
     def parent: Path = Path(path.init)
 
-    def \(child: String): Path = Path(path :+ child)
+    def /(child: String): Path = Path(path :+ child)
+    def /(subpath: Path): Path = Path(path ++ subpath.path)
 
     def string: String = path mkString "/"
 }
