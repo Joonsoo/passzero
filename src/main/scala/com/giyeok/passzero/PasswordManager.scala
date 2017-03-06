@@ -7,12 +7,13 @@ import com.giyeok.passzero.Password.Field
 import com.giyeok.passzero.Password.KeyType
 import com.giyeok.passzero.Password.Sheet
 import com.giyeok.passzero.Password.SheetType
+import com.giyeok.passzero.utils.FutureStream
 import org.json4s._
 
 class PasswordManager(session: Session) {
     private implicit val ec = ExecutionContext.global
 
-    def directoryList(): Stream[Password.Directory] = {
+    def directoryList(): FutureStream[Seq[Password.Directory]] = {
         //        val listStream = session.list(session.rootPath)
         //        val y = listStream map { meta => session.getAsString(meta.path / "info") }
         //        val x = Future.traverse(listStream) { meta => session.getAsJson(meta.path / "info") }
@@ -34,8 +35,9 @@ class PasswordManager(session: Session) {
         ???
     }
 
-    def sheetList(directory: Password.Directory): Stream[Password.Sheet] =
+    def sheetList(directory: Password.Directory): FutureStream[Seq[Password.Sheet]] = {
         ???
+    }
 
     def content(sheet: Password.Sheet): Seq[Password.Field] =
         ???

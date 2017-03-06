@@ -8,6 +8,7 @@ import scala.collection.mutable.{Map => MutableMap}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import com.giyeok.passzero.utils.ByteArrayUtil._
+import com.giyeok.passzero.utils.FutureStream
 
 // 실제로 아무데도 저장하지 않는 on memory 스토리지 - 테스팅 용도
 class MemoryStorageSession(val profile: MemoryStorageProfile) extends StorageSession {
@@ -16,7 +17,7 @@ class MemoryStorageSession(val profile: MemoryStorageProfile) extends StorageSes
     val map: MutableMap[Path, (EntityMeta, Array[Byte])] =
         MutableMap[Path, (EntityMeta, Array[Byte])]()
 
-    def list(path: Path): Stream[Future[Seq[EntityMeta]]] = ???
+    def list(path: Path): FutureStream[Seq[EntityMeta]] = ???
 
     def getMeta(path: Path): Future[Option[EntityMeta]] = ???
 

@@ -11,6 +11,7 @@ import com.giyeok.passzero.storage.EntityMeta
 import com.giyeok.passzero.storage.Path
 import com.giyeok.passzero.storage.StorageSession
 import com.giyeok.passzero.utils.ByteBuf
+import com.giyeok.passzero.utils.FutureStream
 
 class LocalStorageSession(
         val profile: LocalStorageProfile,
@@ -22,15 +23,19 @@ class LocalStorageSession(
     def pathFile(path: Path): File =
         new File(rootDirectory, path.string)
 
-    def list(path: Path): Stream[Future[Seq[EntityMeta]]] = {
-        //        pathFile(path).list().toStream map { name =>
-        //            val p = path / name
-        //            EntityMeta(p, p.string, Map())
-        //        }
-        ???
+    def list(path: Path): FutureStream[Seq[EntityMeta]] = {
+        val future = Future {
+            pathFile(path).list().toSeq map { name =>
+                val p = path / name
+                EntityMeta(p, p.string, Map())
+            }
+        }
+        FutureStream(future)
     }
 
-    def getMeta(path: Path): Future[Option[EntityMeta]] = ???
+    def getMeta(path: Path): Future[Option[EntityMeta]] = Future {
+        if (pathFile(path).exists()) Some(EntityMeta(path, path.string, Map())) else None
+    }
 
     def get(path: Path): Future[Option[Entity[Array[Byte]]]] = Future {
         val f = pathFile(path)

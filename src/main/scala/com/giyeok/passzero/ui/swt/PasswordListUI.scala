@@ -13,6 +13,7 @@ import com.giyeok.passzero.Session
 import com.giyeok.passzero.storage.Path
 import com.giyeok.passzero.ui.Config
 import com.giyeok.passzero.utils.ByteArrayUtil._
+import com.giyeok.passzero.utils.FutureStream
 import org.eclipse.swt.SWT
 import org.eclipse.swt.events.SelectionEvent
 import org.eclipse.swt.events.SelectionListener
@@ -21,14 +22,13 @@ import org.eclipse.swt.widgets
 import org.eclipse.swt.widgets.Composite
 import org.eclipse.swt.widgets.Display
 import org.eclipse.swt.widgets.Shell
-import org.eclipse.swt.widgets.Table
 
 class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Session, config: Config)
         extends Composite(parent, style) with WidgetUtil with ClipboardUtil with GridLayoutUtil with MessageBoxUtil {
     implicit private val ec = ExecutionContext.global
 
     shell.setText(config.stringRegistry.get("PasswordListUI"))
-    setLayout(new GridLayout(3, false))
+    setLayout(new GridLayout(3, true))
 
     private val saveBtn = button("Save")
     private val loadBtn = button("Load")
@@ -47,7 +47,7 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
     loadBtn.addSelectionListener(new SelectionListener {
         def widgetSelected(e: SelectionEvent): Unit = {
             val list = session.list(Path(""))
-            list foreach println
+            // list foreach println
 
             session.getAsString(Path("hello")) foreach { s =>
                 showMessage(s.get.content)
@@ -77,19 +77,22 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
 
     private val passwordMgr = new PasswordManager(session)
 
-    private val directoryList = new SortedList[Password.Directory](getDisplay, this, SWT.NONE) {
+    private val directoryList = new SortedList[Password.Directory](getDisplay, this, SWT.BORDER) {
         override def >(a: Directory, b: Directory): Boolean = a.name > b.name
         override def repr(item: Directory): String = item.name
         override def selected(item: Directory, index: Int): Unit = setSelectedDirectory(item)
     }
+    directoryList.listWidget.setLayoutData(fillAll())
 
-    private val sheetList = new SortedList[Password.Sheet](getDisplay, this, SWT.NONE) {
+    private val sheetList = new SortedList[Password.Sheet](getDisplay, this, SWT.BORDER) {
         override def >(a: Sheet, b: Sheet): Boolean = a.name > b.name
         override def repr(item: Sheet): String = item.name
         override def selected(item: Sheet, index: Int): Unit = setSelectedSheet(item)
     }
+    sheetList.listWidget.setLayoutData(fillAll())
 
-    private val sheetView = new Table(this, SWT.NONE)
+    private val sheetView = new SheetContentView(this, SWT.BORDER)
+    sheetView.setLayoutData(fillAll())
 
     private def start(): Unit = {
         Future {
@@ -114,7 +117,7 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
             passwordMgr.content(sheet)
         } foreach { fields =>
             getDisplay.syncExec(() => {
-                // sheetView.setFields(fields)
+                sheetView.setFields(fields)
             })
         }
     }
@@ -141,19 +144,27 @@ abstract class SortedList[T](display: Display, parent: Composite, style: Int) {
 
     }
 
-    def setSource(stream: Stream[T]): Unit = {
+    def setSource(stream: FutureStream[Seq[T]]): Unit = {
         clear()
-        stream.foldLeft(Seq[T]()) { (list, item) =>
-            val index = list.zipWithIndex find { p => >(p._1, item) } map { _._2 } getOrElse list.length
-            val (init, tail) = list.splitAt(index)
-            val newList: Seq[T] = init ++ (item +: tail)
-            display.syncExec(() => { listWidget.add(repr(item), index) })
-            items = newList
-            newList
-        }
+        //        stream.foldLeft(Seq[T]()) { (list, page) =>
+        //            val index = list.zipWithIndex find { p => >(p._1, item) } map { _._2 } getOrElse list.length
+        //            val (init, tail) = list.splitAt(index)
+        //            val newList: Seq[T] = init ++ (item +: tail)
+        //            display.syncExec(() => { listWidget.add(repr(item), index) })
+        //            items = newList
+        //            newList
+        //        }
     }
 
     def >(a: T, b: T): Boolean // = a > b
     def repr(item: T): String // = item.name
     def selected(item: T, index: Int): Unit
+}
+
+class SheetContentView(parent: Composite, style: Int) extends Composite(parent, style) {
+    def clearAll(): Unit = {
+    }
+
+    def setFields(fields: Seq[Password.Field]): Unit = {
+    }
 }

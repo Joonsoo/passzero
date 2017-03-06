@@ -13,6 +13,7 @@ import com.giyeok.passzero.storage.Path
 import com.giyeok.passzero.storage.StorageProfile
 import com.giyeok.passzero.storage.StorageSession
 import com.giyeok.passzero.utils.ByteArrayUtil._
+import com.giyeok.passzero.utils.FutureStream
 import org.json4s.JValue
 import org.json4s.native.JsonMethods._
 
@@ -81,7 +82,7 @@ class Session(revision: Long, password: String, localKeys: LocalSecret, storageS
         AES256CBC.decode(source, secretKey, initVec)
     }
 
-    def list(path: Path): Stream[Future[Seq[EntityMeta]]] = {
+    def list(path: Path): FutureStream[Seq[EntityMeta]] = {
         // storage에서 (디렉토리) path 하위 Path들 목록
         storage.list(rootPath / path)
     }
