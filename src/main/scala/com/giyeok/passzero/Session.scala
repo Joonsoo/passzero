@@ -43,6 +43,8 @@ class Session(revision: Long, password: String, localKeys: LocalSecret, storageS
     def this(revision: Long, password: String, localKeys: LocalSecret, storageProfile: StorageProfile) =
         this(revision, password, localKeys, new StorageSessionManager(storageProfile))
 
+    private implicit val ec = ExecutionContext.global
+
     private val secretKey: Array[Byte] = {
         // (password: String, pwSalt: Array[Byte], localKey: Array[Byte])
         val pwHash = PasswordHash.generateHash(localKeys.pwSalt, password)
@@ -57,8 +59,6 @@ class Session(revision: Long, password: String, localKeys: LocalSecret, storageS
     def localInfo: LocalInfo = new LocalInfo(revision, localKeys, storage.profile)
 
     val rootPath = Path(Seq(revision.toString))
-
-    implicit private val ec = ExecutionContext.global
 
     def ensureInitialized(): Future[Unit] = {
         // /<revision> 폴더가 있는지 확인하고 없으면 만든다
@@ -84,12 +84,12 @@ class Session(revision: Long, password: String, localKeys: LocalSecret, storageS
 
     def list(path: Path): FutureStream[Seq[EntityMeta]] = {
         // storage에서 (디렉토리) path 하위 Path들 목록
-        storage.list(rootPath / path)
+        storage.list(path)
     }
 
     def get(path: Path): Future[Option[Entity[Array[Byte]]]] = {
         // storage에서 (파일) path의 내용 디코딩해서 반환
-        storage.get(rootPath / path) map {
+        storage.get(path) map {
             _ map {
                 _ mapContent { content =>
                     val (initVecBytes, body) = content.splitAt(InitVec.length)
@@ -111,7 +111,7 @@ class Session(revision: Long, password: String, localKeys: LocalSecret, storageS
     def put(path: Path, content: Array[Byte]): Future[Boolean] = {
         // storage에 (파일) path의 내용을 인코딩된 content로 치환
         val (initVec, encoded) = encode(content)
-        storage.putContent(rootPath / path, initVec.array ++ encoded)
+        storage.putContent(path, initVec.array ++ encoded)
     }
 
     def putString(path: Path, content: String): Future[Boolean] = {
@@ -123,11 +123,11 @@ class Session(revision: Long, password: String, localKeys: LocalSecret, storageS
     }
 
     def delete(path: Path, recursive: Boolean = false): Future[Boolean] = {
-        storage.delete(rootPath / path, recursive)
+        storage.delete(path, recursive)
     }
 
     def mkdir(path: Path, recursive: Boolean = false): Future[Boolean] = {
-        storage.mkdir(rootPath / path, recursive)
+        storage.mkdir(path, recursive)
     }
 
     // TODO checkAndPut이 정말 필요할까?

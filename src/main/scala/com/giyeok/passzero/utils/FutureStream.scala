@@ -8,6 +8,7 @@ sealed trait FutureStream[+T] {
 
     def map[B](func: T => B): FutureStream[B]
     def map1[B](func: T => Future[B]): FutureStream[B]
+    def foreach(func: T => Unit): Unit
 }
 object FutureStream {
     case class Cons[T](future: Future[(T, FutureStream[T])])(implicit val ec: ExecutionContext) extends FutureStream[T] {
@@ -27,12 +28,17 @@ object FutureStream {
             }
             Cons(newFuture)
         }
+        def foreach(func: T => Unit): Unit = {
+            value foreach func
+            next foreach { _ foreach func }
+        }
     }
     case object Nil extends FutureStream[Nothing] {
         val isEmpty: Boolean = true
 
         def map[B](func: Nothing => B): FutureStream[B] = Nil
         def map1[B](func: Nothing => Future[B]): FutureStream[B] = Nil
+        def foreach(func: Nothing => Unit): Unit = {}
     }
 
     def apply[T](items: Future[T]*): FutureStream[T] = {

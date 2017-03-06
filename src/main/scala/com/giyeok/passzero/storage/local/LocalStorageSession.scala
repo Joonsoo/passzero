@@ -39,6 +39,7 @@ class LocalStorageSession(
 
     def get(path: Path): Future[Option[Entity[Array[Byte]]]] = Future {
         val f = pathFile(path)
+        println("get", path.path, f.getCanonicalPath)
         if (f.exists()) {
             val is = new FileInputStream(f)
             try {

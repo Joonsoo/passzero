@@ -13,6 +13,7 @@ class Path(val path: Seq[String]) {
     def /(subpath: Path): Path = Path(path ++ subpath.path)
 
     def string: String = path mkString "/"
+    override def toString: String = this.string
 }
 
 object Path {

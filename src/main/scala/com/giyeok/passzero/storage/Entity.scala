@@ -1,8 +1,7 @@
 package com.giyeok.passzero.storage
 
 case class EntityMeta(path: Path, id: String, metas: Map[String, String]) {
-    def isDirectory: Boolean = ???
-    def isFile: Boolean = ???
+    def isDirectory: Boolean = true
 }
 
 case class Entity[T](meta: EntityMeta, content: T) {

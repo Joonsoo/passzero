@@ -48,9 +48,7 @@ class PasswordManager(session: Session) {
                             // 잘못된 상황 - 파싱 실패?
                             None
                     }
-                }) map {
-                    _.flatten
-                }
+                }) map { _.flatten }
             }
         }
 
@@ -66,6 +64,15 @@ class PasswordManager(session: Session) {
                     }
                 case false =>
                     Future.successful(None)
+            }
+        }
+
+        def updateDirectory(directory: Directory, name: String): Future[Option[Directory]] = {
+            val path = directoryPath(directory)
+            val newDirectory = Directory(directory.id, name)
+            session.putJson(path / "info", infoJsonOf(newDirectory)) map {
+                case true => Some(newDirectory)
+                case false => None
             }
         }
     }
@@ -108,6 +115,15 @@ class PasswordManager(session: Session) {
                         case false => None
                     }
                 case false => Future.successful(None)
+            }
+        }
+
+        def updateSheet(sheet: Sheet, name: String, sheetType: SheetType.Value): Future[Option[Sheet]] = {
+            val newSheet = Sheet(sheet.directory, sheet.id, name, sheetType)
+            val path = sheetPath(sheet)
+            session.putJson(path / "info", infoJsonOf(newSheet)) map {
+                case true => Some(sheet)
+                case false => None
             }
         }
     }
