@@ -69,7 +69,7 @@ class Session(revision: Long, password: String, localKeys: LocalSecret, storageS
             case Some(meta) =>
                 Future.failed(new Exception(s"Root path ${meta.path.string} must be a directory"))
             case None =>
-                storage.mkdir(rootPath)
+                storage.mkdir(rootPath) map { _ => {} }
         }
     }
 
@@ -105,28 +105,28 @@ class Session(revision: Long, password: String, localKeys: LocalSecret, storageS
     }
 
     def getAsJson(path: Path): Future[Option[Entity[JValue]]] = {
-        getAsString(path) map { _ map { _ mapContent { _ => ??? } } }
+        getAsString(path) map { _ map { _ mapContent { parse(_) } } }
     }
 
-    def put(path: Path, content: Array[Byte]): Future[Unit] = {
+    def put(path: Path, content: Array[Byte]): Future[Boolean] = {
         // storage에 (파일) path의 내용을 인코딩된 content로 치환
         val (initVec, encoded) = encode(content)
         storage.putContent(rootPath / path, initVec.array ++ encoded)
     }
 
-    def putString(path: Path, content: String): Future[Unit] = {
+    def putString(path: Path, content: String): Future[Boolean] = {
         put(path, content.toBytes)
     }
 
-    def putJson(path: Path, content: JValue): Future[Unit] = {
+    def putJson(path: Path, content: JValue): Future[Boolean] = {
         putString(path, compact(render(content)))
     }
 
-    def delete(path: Path, recursive: Boolean): Future[Boolean] = {
+    def delete(path: Path, recursive: Boolean = false): Future[Boolean] = {
         storage.delete(rootPath / path, recursive)
     }
 
-    def mkdir(path: Path, recursive: Boolean): Future[Unit] = {
+    def mkdir(path: Path, recursive: Boolean = false): Future[Boolean] = {
         storage.mkdir(rootPath / path, recursive)
     }
 

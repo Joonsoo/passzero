@@ -8,6 +8,7 @@ import scala.util.Success
 import com.giyeok.passzero.Password
 import com.giyeok.passzero.Password.Directory
 import com.giyeok.passzero.Password.Sheet
+import com.giyeok.passzero.Password.SheetDetail
 import com.giyeok.passzero.PasswordManager
 import com.giyeok.passzero.Session
 import com.giyeok.passzero.storage.Path
@@ -22,6 +23,7 @@ import org.eclipse.swt.widgets
 import org.eclipse.swt.widgets.Composite
 import org.eclipse.swt.widgets.Display
 import org.eclipse.swt.widgets.Shell
+import org.eclipse.swt.widgets.Table
 
 class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Session, config: Config)
         extends Composite(parent, style) with WidgetUtil with ClipboardUtil with GridLayoutUtil with MessageBoxUtil {
@@ -99,7 +101,7 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
             session.ensureInitialized()
         } onComplete {
             case Success(_) =>
-                directoryList.setSource(passwordMgr.directoryList())
+                getDisplay.syncExec(() => directoryList.setSource(passwordMgr.directory.directoryList()))
             case Failure(reason) =>
                 reason.printStackTrace()
                 getDisplay.syncExec(() => showMessage(reason.getMessage))
@@ -108,16 +110,19 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
     start()
 
     private def setSelectedDirectory(directory: Password.Directory): Unit = {
-        sheetList.setSource(passwordMgr.sheetList(directory))
+        sheetList.setSource(passwordMgr.sheet.sheetList(directory))
         sheetView.clearAll()
     }
 
     private def setSelectedSheet(sheet: Password.Sheet): Unit = {
-        Future {
-            passwordMgr.content(sheet)
-        } foreach { fields =>
+        passwordMgr.sheetDetail.sheetDetail(sheet) foreach { detailOpt =>
             getDisplay.syncExec(() => {
-                sheetView.setFields(fields)
+                detailOpt match {
+                    case Some(detail) =>
+                        sheetView.setDetail(detail)
+                    case None =>
+                        sheetView.setError()
+                }
             })
         }
     }
@@ -165,6 +170,9 @@ class SheetContentView(parent: Composite, style: Int) extends Composite(parent, 
     def clearAll(): Unit = {
     }
 
-    def setFields(fields: Seq[Password.Field]): Unit = {
+    def setDetail(detail: SheetDetail): Unit = {
+    }
+
+    def setError(): Unit = {
     }
 }

@@ -24,18 +24,19 @@ class MemoryStorageSession(val profile: MemoryStorageProfile) extends StorageSes
     def get(path: Path): Future[Option[Entity[Array[Byte]]]] =
         Future { map get path map { p => Entity(p._1, p._2) } }
 
-    def putContent(path: Path, content: Array[Byte]): Future[Unit] = Future {
+    def putContent(path: Path, content: Array[Byte]): Future[Boolean] = Future {
         map get path match {
             case Some((meta, _)) =>
                 map(path) = (meta, content)
             case None =>
                 map(path) = (EntityMeta(path, path.string, Map()), content)
         }
+        true
     }
 
     def delete(path: Path, recursive: Boolean): Future[Boolean] = ???
 
-    def mkdir(path: Path, recursive: Boolean): Future[Unit] = ???
+    def mkdir(path: Path, recursive: Boolean): Future[Boolean] = ???
 
     def printHexMatrixOfFile(path: Path): Unit = {
         get(path) foreach {

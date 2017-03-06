@@ -14,9 +14,12 @@ trait StorageSession {
 
     def get(path: Path): Future[Option[Entity[Array[Byte]]]]
 
-    def putContent(path: Path, content: Array[Byte]): Future[Unit]
+    // putContent가 성공하면 true, 실패하면 false
+    def putContent(path: Path, content: Array[Byte]): Future[Boolean]
 
+    // delete가 성공하면 true, 실패하면 false
     def delete(path: Path, recursive: Boolean = false): Future[Boolean]
 
-    def mkdir(path: Path, recursive: Boolean = false): Future[Unit]
+    // mkdir이 성공하면 true, 실패하면 false
+    def mkdir(path: Path, recursive: Boolean = false): Future[Boolean]
 }

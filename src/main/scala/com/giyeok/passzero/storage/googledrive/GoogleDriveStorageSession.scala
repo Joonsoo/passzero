@@ -29,9 +29,9 @@ class GoogleDriveStorageSession(
 
     def get(path: Path): Future[Option[Entity[Array[Byte]]]] = ???
 
-    def putContent(path: Path, content: Array[Byte]): Future[Unit] = ???
+    def putContent(path: Path, content: Array[Byte]): Future[Boolean] = ???
 
     def delete(path: Path, recursive: Boolean): Future[Boolean] = ???
 
-    def mkdir(path: Path, recursive: Boolean): Future[Unit] = ???
+    def mkdir(path: Path, recursive: Boolean): Future[Boolean] = ???
 }

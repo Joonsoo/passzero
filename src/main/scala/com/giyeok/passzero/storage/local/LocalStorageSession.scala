@@ -53,17 +53,31 @@ class LocalStorageSession(
         }
     }
 
-    def putContent(path: Path, content: Array[Byte]): Future[Unit] = Future {
+    def putContent(path: Path, content: Array[Byte]): Future[Boolean] = Future {
         val f = pathFile(path)
         val os = new FileOutputStream(f)
         try {
             os.write(content)
+            true
+        } catch {
+            case e: Throwable =>
+                e.printStackTrace()
+                false
         } finally {
             os.close()
         }
     }
 
-    def delete(path: Path, recursive: Boolean): Future[Boolean] = ???
+    def delete(path: Path, recursive: Boolean): Future[Boolean] = Future {
+        val f = pathFile(path)
+        println(s"delete ${f.getCanonicalPath}")
+        // f.delete()
+        true
+    }
 
-    def mkdir(path: Path, recursive: Boolean): Future[Unit] = ???
+    def mkdir(path: Path, recursive: Boolean): Future[Boolean] = Future {
+        val f = pathFile(path)
+        println(s"mkdir ${f.getCanonicalPath}")
+        f.mkdir()
+    }
 }
