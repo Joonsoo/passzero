@@ -32,11 +32,20 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
     shell.setText(config.stringRegistry.get("PasswordListUI"))
     setLayout(new GridLayout(3, true))
 
+    private val refreshAllBtn = button("Refresh All")
     private val newDirectoryBtn = button("New Directory")
     private val newSheetBtn = button("New Sheet")
     private val copyBtn = button("Copy")
 
     private val emergencyKitBtn = button("Emergency Kit", rightest(3))
+
+    refreshAllBtn.addSelectionListener(new SelectionListener {
+        def widgetSelected(e: SelectionEvent): Unit = {
+            start()
+        }
+
+        def widgetDefaultSelected(e: SelectionEvent): Unit = {}
+    })
 
     newDirectoryBtn.addSelectionListener(new SelectionListener {
         def widgetSelected(e: SelectionEvent): Unit = {
