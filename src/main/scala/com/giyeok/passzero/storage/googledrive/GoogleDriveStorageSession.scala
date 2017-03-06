@@ -1,6 +1,7 @@
 package com.giyeok.passzero.storage.googledrive
 
 import scala.collection.JavaConverters._
+import scala.concurrent.Future
 import com.giyeok.passzero.StorageSessionManager
 import com.giyeok.passzero.storage.Entity
 import com.giyeok.passzero.storage.EntityMeta
@@ -16,19 +17,21 @@ class GoogleDriveStorageSession(
         manager: StorageSessionManager,
         drive: Drive
 ) extends StorageSession {
-    def list(path: Path): Stream[EntityMeta] = {
-        val list = drive.files().list().execute()
-        list.getFiles.iterator().asScala.toStream map { f =>
-            EntityMeta(path \ f.getName, f.getId, Map())
-        }
+    def list(path: Path): Stream[Future[Seq[EntityMeta]]] = {
+        //        val list = drive.files().list().execute()
+        //        list.getFiles.iterator().asScala.toStream map { f =>
+        //            EntityMeta(path / f.getName, f.getId, Map())
+        //        }
+        ???
     }
 
-    def get(path: Path): Option[Entity[Array[Byte]]] = ???
+    def getMeta(path: Path): Future[Option[EntityMeta]] = ???
 
-    def putContent(path: Path, content: Array[Byte]): Unit = {
-    }
+    def get(path: Path): Future[Option[Entity[Array[Byte]]]] = ???
 
-    def delete(path: Path, recursive: Boolean): Boolean = ???
+    def putContent(path: Path, content: Array[Byte]): Future[Unit] = ???
 
-    def mkdir(path: Path, recursive: Boolean): Unit = ???
+    def delete(path: Path, recursive: Boolean): Future[Boolean] = ???
+
+    def mkdir(path: Path, recursive: Boolean): Future[Unit] = ???
 }

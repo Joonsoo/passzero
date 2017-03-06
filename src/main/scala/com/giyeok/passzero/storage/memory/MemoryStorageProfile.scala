@@ -22,6 +22,7 @@ class MemoryStorageProfile extends StorageProfile {
 
     lazy val toBytes: Array[Byte] = MemoryStorageProfile.specString.toBytes
 
-    def createSession(manager: StorageSessionManager): MemoryStorageSession =
-        new MemoryStorageSession(this)
+    val session: MemoryStorageSession = new MemoryStorageSession(this)
+
+    def createSession(manager: StorageSessionManager): MemoryStorageSession = session
 }

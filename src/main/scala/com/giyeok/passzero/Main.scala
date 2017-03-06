@@ -1,17 +1,22 @@
 package com.giyeok.passzero
 
+import scala.concurrent.ExecutionContext
+import com.giyeok.passzero.storage.Entity
 import com.giyeok.passzero.storage.Path
 import com.giyeok.passzero.utils.ByteArrayUtil._
 import com.giyeok.passzero.storage.memory.MemoryStorageProfile
 import com.giyeok.passzero.storage.memory.MemoryStorageSession
 
 object Main {
+    private implicit val ec = ExecutionContext.global
+
     def main(args: Array[String]): Unit = {
         val localKeys = LocalSecret.generateRandomLocalInfo()
 
         val password = "starbucks_apple_samsung_television_coffee"
 
-        val session = new Session(0, password, localKeys, new MemoryStorageProfile)
+        val storageProfile = new MemoryStorageProfile
+        val session = new Session(0, password, localKeys, storageProfile)
 
         val localSave = LocalInfo.save(password, session.localInfo)
         localSave.printHexMatrix()
@@ -37,10 +42,13 @@ object Main {
             println(s"  * iteration $iteration")
             val path = Path("")
             session.putString(path, original)
-            session.storage.asInstanceOf[MemoryStorageSession].printHexMatrixOfFile(path)
-            val decoded = session.getAsString(path).get.content
-            println(s"decoded: $decoded")
-            assert(original == decoded)
+            storageProfile.session.printHexMatrixOfFile(path)
+            for {
+                Some(Entity(_, decoded)) <- session.getAsString(path)
+            } yield {
+                println(s"decoded: $decoded")
+                assert(original == decoded)
+            }
         }
     }
 }

@@ -1,17 +1,20 @@
 package com.giyeok.passzero
 
 import java.io.File
-import com.giyeok.passzero.utils.ByteArrayUtil._
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
+import scala.concurrent.duration._
 import com.giyeok.passzero.Security.AES256CBC
+import com.giyeok.passzero.Security.InitVec
 import com.giyeok.passzero.Security.PasswordHash
 import com.giyeok.passzero.storage.Entity
 import com.giyeok.passzero.storage.EntityMeta
 import com.giyeok.passzero.storage.Path
-import com.giyeok.passzero.storage.StorageSession
-import scala.concurrent.duration._
-import com.giyeok.passzero.Security.InitVec
 import com.giyeok.passzero.storage.StorageProfile
+import com.giyeok.passzero.storage.StorageSession
+import com.giyeok.passzero.utils.ByteArrayUtil._
 import org.json4s.JValue
+import org.json4s.native.JsonMethods._
 
 object Session {
     def load(password: String, localInfoFile: File): Session = {
@@ -48,9 +51,26 @@ class Session(revision: Long, password: String, localKeys: LocalSecret, storageS
     }
 
     // TODO StorageSession에서 필요에 의해 session의 storage가 변경되어야 할 수도 있다
-    def storage: StorageSession = storageSessionManager.storageSession()
+    private def storage: StorageSession = storageSessionManager.storageSession()
 
     def localInfo: LocalInfo = new LocalInfo(revision, localKeys, storage.profile)
+
+    val rootPath = Path(Seq(revision.toString))
+
+    implicit private val ec = ExecutionContext.global
+
+    def ensureInitialized(): Future[Unit] = {
+        // /<revision> 폴더가 있는지 확인하고 없으면 만든다
+        storage.getMeta(rootPath) flatMap {
+            case Some(meta) if meta.isDirectory =>
+                // nothing to do
+                Future.successful({})
+            case Some(meta) =>
+                Future.failed(new Exception(s"Root path ${meta.path.string} must be a directory"))
+            case None =>
+                storage.mkdir(rootPath)
+        }
+    }
 
     def encode(array: Array[Byte]): (InitVec, Array[Byte]) = {
         val iv = InitVec.generate()
@@ -61,47 +81,52 @@ class Session(revision: Long, password: String, localKeys: LocalSecret, storageS
         AES256CBC.decode(source, secretKey, initVec)
     }
 
-    def list(path: Path): Stream[EntityMeta] = {
+    def list(path: Path): Stream[Future[Seq[EntityMeta]]] = {
         // storage에서 (디렉토리) path 하위 Path들 목록
-        // TODO paging되는 경우 정보를 얻어오는대로 전달한다
-        storage.list(path)
+        storage.list(rootPath / path)
     }
 
-    def get(path: Path): Option[Entity[Array[Byte]]] = {
+    def get(path: Path): Future[Option[Entity[Array[Byte]]]] = {
         // storage에서 (파일) path의 내용 디코딩해서 반환
-        storage.get(path) map {
-            _ mapContent { content =>
-                val (initVecBytes, body) = content.splitAt(InitVec.length)
-                decode(body, InitVec(initVecBytes))
+        storage.get(rootPath / path) map {
+            _ map {
+                _ mapContent { content =>
+                    val (initVecBytes, body) = content.splitAt(InitVec.length)
+                    decode(body, InitVec(initVecBytes))
+                }
             }
         }
     }
 
-    def getAsString(path: Path): Option[Entity[String]] = {
+    def getAsString(path: Path): Future[Option[Entity[String]]] = {
         // storage에서 (파일) path의 내용 디코딩해서 스트링으로 변환해서 반환
-        get(path) map { _ mapContent { _.asString } }
+        get(path) map { _ map { _ mapContent { _.asString } } }
     }
 
-    def getAsJson(path: Path): Option[Entity[JValue]] = {
-        getAsString(path) map { _ mapContent { _ => ??? } }
+    def getAsJson(path: Path): Future[Option[Entity[JValue]]] = {
+        getAsString(path) map { _ map { _ mapContent { _ => ??? } } }
     }
 
-    def put(path: Path, content: Array[Byte]): Unit = {
+    def put(path: Path, content: Array[Byte]): Future[Unit] = {
         // storage에 (파일) path의 내용을 인코딩된 content로 치환
         val (initVec, encoded) = encode(content)
-        storage.putContent(path, initVec.array ++ encoded)
+        storage.putContent(rootPath / path, initVec.array ++ encoded)
     }
 
-    def putString(path: Path, content: String): Unit = {
+    def putString(path: Path, content: String): Future[Unit] = {
         put(path, content.toBytes)
     }
 
-    def delete(path: Path, recursive: Boolean): Unit = {
-        storage.delete(path, recursive)
+    def putJson(path: Path, content: JValue): Future[Unit] = {
+        putString(path, compact(render(content)))
     }
 
-    def mkdir(path: Path, recursive: Boolean): Unit = {
-        storage.mkdir(path, recursive)
+    def delete(path: Path, recursive: Boolean): Future[Boolean] = {
+        storage.delete(rootPath / path, recursive)
+    }
+
+    def mkdir(path: Path, recursive: Boolean): Future[Unit] = {
+        storage.mkdir(rootPath / path, recursive)
     }
 
     // TODO checkAndPut이 정말 필요할까?
