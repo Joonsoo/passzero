@@ -23,6 +23,5 @@ object SWTUI {
                 display.sleep()
             }
         }
-        display.close()
     }
 }

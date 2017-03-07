@@ -1,8 +1,10 @@
 package com.giyeok.passzero.ui.swt
 
+import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.util.Failure
+import scala.util.Random
 import scala.util.Success
 import com.giyeok.passzero.Password
 import com.giyeok.passzero.Password.Directory
@@ -49,7 +51,7 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
 
     newDirectoryBtn.addSelectionListener(new SelectionListener {
         def widgetSelected(e: SelectionEvent): Unit = {
-            passwordMgr.directory.createDirectory("울랄라")
+            passwordMgr.directory.createDirectory(s"울랄라 ${Math.abs(Random.nextInt())}")
         }
 
         def widgetDefaultSelected(e: SelectionEvent): Unit = {}
@@ -59,7 +61,7 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
         def widgetSelected(e: SelectionEvent): Unit = {
             directoryList.selectedItem foreach { pair =>
                 val directory = pair._1
-                passwordMgr.sheet.createSheet(directory, "amazon.com", SheetType.Login)
+                passwordMgr.sheet.createSheet(directory, s"amazon.com ${Math.abs(Random.nextInt())}", SheetType.Login)
             }
         }
 
@@ -137,6 +139,14 @@ abstract class SortedList[T](display: Display, parent: Composite, style: Int) {
 
     def selectedItem: Option[(T, Int)] = _selectedItem
 
+    private var _sourceId: Long = -1
+    private val sourceIdCounter = new AtomicLong(0)
+    private def newSourceId(): Long = {
+        val newId = sourceIdCounter.getAndIncrement()
+        this.synchronized { _sourceId = newId }
+        newId
+    }
+
     listWidget.addSelectionListener(new SelectionListener {
         override def widgetSelected(e: SelectionEvent): Unit = {
             val index = listWidget.getSelectionIndex
@@ -156,14 +166,29 @@ abstract class SortedList[T](display: Display, parent: Composite, style: Int) {
 
     def setSource(stream: FutureStream[Seq[T]]): Unit = {
         clear()
-        stream foreach { page =>
-            page foreach { item =>
-                val index = items.zipWithIndex find { p => >(p._1, item) } map { _._2 } getOrElse items.length
-                val (init, tail) = items.splitAt(index)
-                val newList: Seq[T] = init ++ (item +: tail)
-                display.syncExec(() => { listWidget.add(repr(item), index) })
-                items = newList
-                newList
+        listWidget.setEnabled(false)
+        val currentSourceId = newSourceId()
+        stream foreach { (page, tail) =>
+            this.synchronized {
+                if (this._sourceId == currentSourceId) {
+                    page foreach { item =>
+                        val index = items.zipWithIndex find { p => >(p._1, item) } map {
+                            _._2
+                        } getOrElse items.length
+                        val (init, tail) = items.splitAt(index)
+                        val newList: Seq[T] = init ++ (item +: tail)
+                        display.syncExec(() => {
+                            listWidget.add(repr(item), index)
+                        })
+                        items = newList
+                        newList
+                    }
+                    if (tail.isEmpty) display.syncExec(() => {
+                        listWidget.setEnabled(true)
+                    })
+                } else {
+                    // tail.cancel()
+                }
             }
         }
     }

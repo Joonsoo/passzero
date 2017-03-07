@@ -12,10 +12,10 @@ object LocalStorageProfile extends StorageProfileSpec {
     val deserializer: (Array[Byte]) => LocalStorageProfile = { array =>
         val rootDirectory = new File(array.asString)
         if (!rootDirectory.exists()) {
-            throw new Exception("LocalStorage root does not exist!")
+            throw new Exception(s"LocalStorage root does not exist! ${rootDirectory.getCanonicalPath}")
         }
         if (!rootDirectory.isDirectory) {
-            throw new Exception("LocalStorage root must be a directory")
+            throw new Exception("LocalStorage root must be a directory! ${rootDirectory.getCanonicalPath}")
         }
         new LocalStorageProfile(rootDirectory)
     }

@@ -5,6 +5,7 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
+import scala.util.Random
 import com.giyeok.passzero.StorageSessionManager
 import com.giyeok.passzero.storage.Entity
 import com.giyeok.passzero.storage.EntityMeta
@@ -12,6 +13,7 @@ import com.giyeok.passzero.storage.Path
 import com.giyeok.passzero.storage.StorageSession
 import com.giyeok.passzero.utils.ByteBuf
 import com.giyeok.passzero.utils.FutureStream
+import com.giyeok.passzero.utils.FutureStream.Cons
 
 class LocalStorageSession(
         val profile: LocalStorageProfile,
@@ -25,12 +27,20 @@ class LocalStorageSession(
 
     def list(path: Path): FutureStream[Seq[EntityMeta]] = {
         val future = Future {
-            pathFile(path).list().toSeq map { name =>
+            val files = Random.shuffle(pathFile(path).list().toSeq map { name =>
                 val p = path / name
                 EntityMeta(p, p.string, Map())
-            }
+            })
+            def waiter(files: Seq[EntityMeta]): (Seq[EntityMeta], FutureStream[Seq[EntityMeta]]) =
+                if (files.isEmpty) (Seq(), FutureStream.empty) else {
+                    val next = files.tail
+                    (Seq(files.head), Cons(Future {
+                        Thread.sleep(100); waiter(next)
+                    }))
+                }
+            waiter(files)
         }
-        FutureStream(future)
+        Cons(future)
     }
 
     def getMeta(path: Path): Future[Option[EntityMeta]] = Future {

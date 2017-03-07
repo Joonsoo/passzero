@@ -84,10 +84,16 @@ class MasterPasswordUI(val shell: Shell, parent: MainUI, style: Int, config: Con
                     case Failure(exception) =>
                         // TODO Illegal Key Size는 특별 처리(설치 방법 안내)
                         exception match {
+                            case invalidKeyException: java.security.InvalidKeyException =>
+                                invalidKeyException.printStackTrace()
+                                // showMessage(s"${throwable.getMessage}; ${System.getProperty("java.home")}")
+                                // http://www.oracle.com/technetwork/java/javase/downloads/jce8-download-2133166.html
+                                showMessage(config.stringRegistry.get(s"Error while loading.\nIt seems to be JCE problem${System.getProperty("java.home")}"))
+                                password.setFocus()
                             case throwable: Throwable =>
                                 throwable.printStackTrace()
                                 // showMessage(s"${throwable.getMessage}; ${System.getProperty("java.home")}")
-                                showMessage(config.stringRegistry.get("Error while loading. Check your password again"))
+                                showMessage(config.stringRegistry.get(s"Error while loading. Check your password again\n${throwable.getMessage}\n${System.getProperty("java.home")}"))
                                 password.setFocus()
                         }
                 }
