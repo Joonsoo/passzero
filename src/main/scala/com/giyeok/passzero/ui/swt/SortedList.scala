@@ -38,6 +38,9 @@ case class TextSortedListItem[T](data: T, text: String) extends SortedListItem {
         if (selected) {
             gc.setBackground(SortedList.selectedBackgroundColor)
             gc.fillRectangle(bounds)
+            gc.setForeground(SortedList.selectedBorderColor)
+            gc.drawRectangle(bounds.x, bounds.y, bounds.width - 1, bounds.height - 1)
+            gc.setForeground(SortedList.baseForegroundColor)
         } else {
             gc.setBackground(SortedList.baseBackgroundColor)
         }
@@ -47,7 +50,9 @@ case class TextSortedListItem[T](data: T, text: String) extends SortedListItem {
 
 object SortedList {
     val selectedBackgroundColor = new Color(null, 255, 255, 0)
+    val selectedBorderColor = new Color(null, 255, 0, 0)
     val baseBackgroundColor = new Color(null, 255, 255, 255)
+    val baseForegroundColor = new Color(null, 0, 0, 0)
 }
 
 // TODO 나중에 StructuredTextView로 바꾸는 것을 고려
@@ -68,7 +73,8 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
         redraw()
     }
 
-    private var _scroll: Point = new Point(0, 0)
+    private val _scroll: Point = new Point(0, 0)
+    private var showSelected: Boolean = false
 
     private var _listeners: Seq[Option[(T, Int)] => Unit] = Seq()
 
@@ -118,6 +124,7 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
     def select(item: Option[(T, Int)]): Unit = {
         _selectedItem = item map { _._2 }
         _listeners foreach { f => f(item) }
+        showSelected = true
         display.asyncExec(() => redraw())
     }
 
@@ -147,6 +154,20 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
             val contentDimension = allDimension.get
 
             val bounds = getBounds
+
+            if (showSelected) {
+                selectedItem foreach { selected =>
+                    val bound = itemBoundsMap(selected)
+                    if (bound.y + bound.height - _scroll.y > bounds.height) {
+                        _scroll.y = (bound.y + bound.height) - bounds.height
+                    }
+                    if (bound.y - _scroll.y < 0) {
+                        _scroll.y = bound.y
+                    }
+                }
+                showSelected = false
+            }
+
             if (_scroll.x + bounds.width > contentDimension.x) {
                 _scroll.x = contentDimension.x - bounds.width
             }

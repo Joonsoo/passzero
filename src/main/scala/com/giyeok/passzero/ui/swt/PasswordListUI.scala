@@ -77,13 +77,13 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
         def widgetDefaultSelected(e: SelectionEvent): Unit = {}
     })
 
-    private val directoryList = new SortedList[TextSortedListItem[Password.Directory]](getDisplay, this, SWT.BORDER)
+    private val directoryList = new SortedList[TextSortedListItem[Password.Directory]](getDisplay, this, SWT.NONE)
     directoryList.setLayoutData(fillAll())
     directoryList.addSelectListener({ selectedOpt =>
         setSelectedDirectory(selectedOpt map { _._1.data })
     })
 
-    private val sheetList = new SortedList[TextSortedListItem[Password.Sheet]](getDisplay, this, SWT.BORDER)
+    private val sheetList = new SortedList[TextSortedListItem[Password.Sheet]](getDisplay, this, SWT.NONE)
     sheetList.setLayoutData(fillAll())
     sheetList.addSelectListener({ selectedOpt =>
         setSelectedSheet(selectedOpt map { _._1.data })
