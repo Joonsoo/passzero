@@ -85,6 +85,27 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
         allDimension = None
     }
 
+    private def addItem(item: T, redraw: Boolean): Unit = {
+        val index = items.zipWithIndex find { p => p._1 > item } map { _._2 } getOrElse items.length
+        val (init, tail) = items.splitAt(index)
+        val newList: Seq[T] = init ++ (item +: tail)
+        _selectedItem match {
+            case Some(idx) if idx >= index =>
+                _selectedItem = Some(idx + 1)
+            case _ => // do nothing
+        }
+        items = newList
+    }
+
+    def addItem(item: T): Unit = {
+        addItem(item, redraw = true)
+    }
+
+    def removeItem(idx: Int): Unit = {
+        // TODO
+        ???
+    }
+
     def setSource(stream: FutureStream[Seq[T]]): Unit = {
         clear()
         setProgress(true)
@@ -92,18 +113,7 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
         stream foreach { (page, tail) =>
             this.synchronized {
                 if (this.sourceIdCounter.get() == currentSourceId) {
-                    page foreach { item =>
-                        val index = items.zipWithIndex find { p => p._1 > item } map { _._2 } getOrElse items.length
-                        val (init, tail) = items.splitAt(index)
-                        val newList: Seq[T] = init ++ (item +: tail)
-                        _selectedItem match {
-                            case Some(idx) if idx >= index =>
-                                _selectedItem = Some(idx + 1)
-                            case _ => // do nothing
-                        }
-                        items = newList
-                        newList
-                    }
+                    page foreach { addItem(_, redraw = false) }
                     allDimension = None // invalidate calculated dimension
                     if (tail.isEmpty) {
                         display.syncExec(() => { setProgress(false) })
