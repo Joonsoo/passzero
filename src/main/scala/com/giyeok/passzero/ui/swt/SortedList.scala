@@ -7,6 +7,7 @@ import org.eclipse.swt.events.KeyEvent
 import org.eclipse.swt.events.KeyListener
 import org.eclipse.swt.events.MouseEvent
 import org.eclipse.swt.events.MouseListener
+import org.eclipse.swt.events.MouseWheelListener
 import org.eclipse.swt.events.PaintEvent
 import org.eclipse.swt.events.PaintListener
 import org.eclipse.swt.graphics.Color
@@ -28,15 +29,19 @@ case class TextSortedListItem[T](data: T, text: String) extends SortedListItem {
         case otherItem: TextSortedListItem[_] => text < otherItem.text
     }
     def dimension(gc: GC): Point = {
-        gc.textExtent(text)
+        val p = gc.textExtent(text)
+        p.x *= -1
+        p.y += 4
+        p
     }
     def draw(gc: GC, bounds: Rectangle, selected: Boolean): Unit = {
         if (selected) {
             gc.setBackground(SortedList.selectedBackgroundColor)
+            gc.fillRectangle(bounds)
         } else {
             gc.setBackground(SortedList.baseBackgroundColor)
         }
-        gc.drawText(text, bounds.x, bounds.y)
+        gc.drawText(text, bounds.x + 4, bounds.y + 2)
     }
 }
 
@@ -140,6 +145,7 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
                 allDimension = Some(dimension)
             }
             val contentDimension = allDimension.get
+
             val bounds = getBounds
             if (_scroll.x + bounds.width > contentDimension.x) {
                 _scroll.x = contentDimension.x - bounds.width
@@ -161,16 +167,22 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
                     if (bound.x < bounds.width || (bound.x + bound.width) > bounds.x) {
                         val isSelected = _selectedItem contains idx
                         val scrolledBound = new Rectangle(bound.x - _scroll.x, bound.y - _scroll.y, bound.width, bound.height)
+                        if (scrolledBound.width < 0) scrolledBound.width = getBounds.width
                         item.draw(gc, scrolledBound, isSelected)
                     }
                 }
             }
 
             if (_progress) {
+                gc.setBackground(SortedList.baseBackgroundColor)
                 gc.drawText("Loading...", 0, 0)
             }
         }
     })
+
+    private def refineRectangle(rect: Rectangle): Rectangle = {
+        if (rect.width < 0) new Rectangle(rect.x, rect.y, getBounds.width, rect.height) else rect
+    }
 
     addMouseListener(new MouseListener {
         override def mouseUp(e: MouseEvent): Unit = {}
@@ -179,7 +191,14 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
 
         override def mouseDown(e: MouseEvent): Unit = {
             val p = new Point(e.x + _scroll.x, e.y + _scroll.y)
-            select(itemBoundsMap find { _._2.contains(p) } map { _._1 })
+            select(itemBoundsMap find { item => refineRectangle(item._2).contains(p) } map { _._1 })
+        }
+    })
+
+    addMouseWheelListener(new MouseWheelListener {
+        override def mouseScrolled(e: MouseEvent): Unit = {
+            _scroll.y -= e.count * 5
+            redraw()
         }
     })
 

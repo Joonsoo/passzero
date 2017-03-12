@@ -110,7 +110,7 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
         directoryOpt match {
             case Some(directory) =>
                 sheetList.setSource(passwordMgr.sheet.sheetList(directory) map { sheets =>
-                    sheets map { sheet => TextSortedListItem(sheet, sheet.name) }
+                    sheets map { sheet => TextSortedListItem(sheet, directory.name + ":" + sheet.name) }
                 })
                 sheetView.clearAll()
             case None =>
