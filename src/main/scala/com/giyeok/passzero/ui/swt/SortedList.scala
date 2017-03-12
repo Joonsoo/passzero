@@ -54,13 +54,8 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
     private var _selectedItem = Option.empty[Int]
     def selectedItem: Option[(T, Int)] = _selectedItem map { idx => (items(idx), idx) }
 
-    private var _sourceId: Long = -1
     private val sourceIdCounter = new AtomicLong(0)
-    private def newSourceId(): Long = {
-        val newId = sourceIdCounter.getAndIncrement()
-        this.synchronized { _sourceId = newId }
-        newId
-    }
+    private def newSourceId(): Long = sourceIdCounter.incrementAndGet()
 
     private var _progress: Boolean = false
     private def setProgress(progress: Boolean): Unit = {
@@ -79,13 +74,13 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
         allDimension = None
     }
 
-    def setSource(stream: FutureStream[Seq[T]]): Unit = this.synchronized {
+    def setSource(stream: FutureStream[Seq[T]]): Unit = {
         clear()
         setProgress(true)
         val currentSourceId = newSourceId()
         stream foreach { (page, tail) =>
             this.synchronized {
-                if (this._sourceId == currentSourceId) {
+                if (this.sourceIdCounter.get() == currentSourceId) {
                     page foreach { item =>
                         val index = items.zipWithIndex find { p => p._1 > item } map { _._2 } getOrElse items.length
                         val (init, tail) = items.splitAt(index)

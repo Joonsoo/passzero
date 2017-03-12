@@ -1,30 +1,21 @@
 package com.giyeok.passzero.ui.swt
 
-import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.util.Failure
 import scala.util.Random
 import scala.util.Success
 import com.giyeok.passzero.Password
-import com.giyeok.passzero.Password.Directory
-import com.giyeok.passzero.Password.Sheet
 import com.giyeok.passzero.Password.SheetDetail
 import com.giyeok.passzero.Password.SheetType
 import com.giyeok.passzero.PasswordManager
 import com.giyeok.passzero.Session
-import com.giyeok.passzero.storage.Path
 import com.giyeok.passzero.ui.Config
-import com.giyeok.passzero.utils.FutureStream
 import org.eclipse.swt.SWT
-import org.eclipse.swt.custom.ScrolledComposite
 import org.eclipse.swt.events.SelectionEvent
 import org.eclipse.swt.events.SelectionListener
 import org.eclipse.swt.layout.GridLayout
-import org.eclipse.swt.widgets
-import org.eclipse.swt.widgets.Canvas
 import org.eclipse.swt.widgets.Composite
-import org.eclipse.swt.widgets.Display
 import org.eclipse.swt.widgets.Shell
 
 class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Session, config: Config)
