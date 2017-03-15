@@ -6,11 +6,12 @@ import scala.concurrent.duration._
 import scala.util.Failure
 import scala.util.Random
 import scala.util.Success
-import com.giyeok.passzero.Password
-import com.giyeok.passzero.Password.Directory
+import com.giyeok.passzero.Password.DirectoryId
+import com.giyeok.passzero.Password.DirectoryInfo
 import com.giyeok.passzero.Password.Field
-import com.giyeok.passzero.Password.Sheet
 import com.giyeok.passzero.Password.SheetDetail
+import com.giyeok.passzero.Password.SheetId
+import com.giyeok.passzero.Password.SheetInfo
 import com.giyeok.passzero.Password.SheetType
 import com.giyeok.passzero.PasswordManager
 import com.giyeok.passzero.Session
@@ -23,8 +24,17 @@ import org.eclipse.swt.widgets.Composite
 import org.eclipse.swt.widgets.Shell
 
 class PasswordStore(passwordMgr: PasswordManager) {
-    def directory(id: String): Directory = ???
-    def sheet(id: String): (Sheet, Option[SheetDetail]) = ???
+    def directory(id: DirectoryId): Future[Option[DirectoryInfo]] = passwordMgr.directory.get(id)
+    def sheet(id: SheetId): Future[Option[(SheetInfo, Option[SheetDetail])]] = {
+        implicit val ec = ExecutionContext.global
+        passwordMgr.sheet.get(id) flatMap {
+            case Some(info) =>
+                passwordMgr.sheetDetail.sheetDetail(id) map { detail =>
+                    Some(info, detail)
+                }
+            case None => Future.successful(None)
+        }
+    }
 }
 
 class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Session, config: Config)
@@ -32,6 +42,7 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
     implicit private val ec = ExecutionContext.global
 
     private val passwordMgr = new PasswordManager(session)
+    private val passwordStore = new PasswordStore(passwordMgr)
 
     shell.setText(config.stringRegistry.get("PasswordListUI"))
     setLayout(new GridLayout(3, true))
@@ -61,9 +72,9 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
 
     newSheetBtn.addSelectionListener(new SelectionListener {
         def widgetSelected(e: SelectionEvent): Unit = {
-            directoryList.selectedItem foreach { pair =>
-                val directory = pair._1.data
-                passwordMgr.sheet.createSheet(directory, s"amazon.com ${Math.abs(Random.nextInt())}", SheetType.Login)
+            directoryList.selectedItem foreach { selected =>
+                val directoryId = selected._1
+                passwordMgr.sheet.createSheet(directoryId, s"amazon.com ${Math.abs(Random.nextInt())}", SheetType.Login)
             }
         }
 
@@ -86,26 +97,30 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
         def widgetDefaultSelected(e: SelectionEvent): Unit = {}
     })
 
-    private val directoryList = new SortedList[TextSortedListItem[Password.Directory]](getDisplay, this, SWT.NONE)
+    private val directoryList = new SortedList[DirectoryId, TextSortedListItem[DirectoryInfo]](getDisplay, this, SWT.NONE, id => {
+        passwordStore.directory(id) map { d => TextSortedListItem(d.get, d.get.name) }
+    })
     directoryList.setLayoutData(fillAll())
     directoryList.addSelectListener({ (selectedOpt, point) =>
         println(point)
-        setSelectedDirectory(selectedOpt map { _._1.data })
+        setSelectedDirectory(selectedOpt map { s => (s._1, s._2.data) })
     })
 
-    private val sheetList = new SortedList[TextSortedListItem[Password.Sheet]](getDisplay, this, SWT.NONE)
+    private val sheetList = new SortedList[SheetId, TextSortedListItem[SheetInfo]](getDisplay, this, SWT.NONE, id => {
+        passwordStore.sheet(id) map { s => TextSortedListItem(s.get._1, s.get._1.name) }
+    })
     sheetList.setLayoutData(fillAll())
     sheetList.addSelectListener({ (selectedOpt, point) =>
         println(point)
-        setSelectedSheet(selectedOpt map { _._1.data })
+        setSelectedSheet(selectedOpt map { _._1 })
     })
 
     private val sheetView = new SheetContentView(config, this, SWT.NONE, this)
     sheetView.setLayoutData(fillAll())
     sheetView.emptyContent()
 
-    private def directoryListItem(directory: Directory) = TextSortedListItem(directory, directory.id, directory.name)
-    private def sheetListItem(sheet: Sheet) = TextSortedListItem(sheet, sheet.id, sheet.name)
+    private def directoryListItem(id: DirectoryId, info: DirectoryInfo) = TextSortedListItem(info, info.name)
+    private def sheetListItem(id: SheetId, info: SheetInfo) = TextSortedListItem(info, info.name)
 
     private def start(): Unit = {
         directoryList.clear()
@@ -115,7 +130,7 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
             case Success(_) =>
                 getDisplay.syncExec(() =>
                     directoryList.setSource(passwordMgr.directory.directoryList() map { directories =>
-                        directories map directoryListItem
+                        directories map { p => (p._1, directoryListItem(p._1, p._2)) }
                     }))
             case Failure(reason) =>
                 reason.printStackTrace()
@@ -124,74 +139,61 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
     }
     start()
 
-    private def setSelectedDirectory(directoryOpt: Option[Password.Directory]): Unit = {
+    private def setSelectedDirectory(directoryOpt: Option[(DirectoryId, DirectoryInfo)]): Unit = {
         println(s"selectedDirectory: $directoryOpt")
         directoryOpt match {
-            case Some(directory) =>
-                sheetList.setSource(passwordMgr.sheet.sheetList(directory) map { sheets =>
-                    sheets map sheetListItem
+            case Some((directoryId, directoryInfo)) =>
+                sheetList.setSource(passwordMgr.sheet.sheetList(directoryId) map { sheets =>
+                    sheets map { s => (s._1, sheetListItem(s._1, s._2)) }
                 })
-                sheetView.setDirectory(directory)
+                sheetView.setDirectory(directoryId, directoryInfo)
             case None =>
                 sheetList.clear()
                 sheetView.emptyContent()
         }
     }
 
-    private def setSelectedSheet(sheetOpt: Option[Password.Sheet]): Unit = {
+    private def setSelectedSheet(sheetOpt: Option[SheetId]): Unit = {
         println(s"selectedSheet: $sheetOpt")
-        sheetOpt match {
-            case Some(sheet) =>
-                passwordMgr.sheetDetail.sheetDetail(sheet) foreach { detailOpt =>
-                    getDisplay.syncExec(() => {
-                        detailOpt match {
-                            case None =>
-                                sheetView.setSheet(sheet)
-                            case Some(detail) =>
-                                sheetView.setDetailedSheet(sheet, detail)
-                        }
-                    })
-                }
-            case None =>
-                sheetView.setDirectory(directoryList.selectedItem.get._1.data)
+        sheetOpt foreach { sheet =>
+            passwordMgr.sheetDetail.sheetDetail(sheet) foreach { detailOpt =>
+                getDisplay.syncExec(() => {
+                    sheetView.setSheetDetail(sheet, detailOpt)
+                })
+            }
         }
     }
 
-    def updateDirectory(directory: Directory, name: String): Unit = {
+    def updateDirectory(directoryId: DirectoryId, name: String): Unit = {
         // TODO 변경되지 않았으면 무시
-        passwordMgr.directory.updateDirectory(directory, name) foreach { newDirectoryOpt =>
+        passwordMgr.directory.updateDirectory(directoryId, name) foreach { newDirectoryOpt =>
             newDirectoryOpt foreach { newDirectory =>
                 getDisplay.syncExec(() => {
-                    directoryList.replaceItem(directory.id, directoryListItem(newDirectory))
-                    // sheetList의 데이터 업데이트
-                    sheetList transformItems { sheet =>
-                        sheetListItem(sheet.data.updateDirectory(newDirectory))
-                    }
+                    directoryList.refreshAllItems()
+                    sheetList.refreshAllItems()
                 })
             }
         }
     }
 
-    def updateSheet(sheet: Sheet, name: String, sheetType: SheetType.Value): Unit = {
+    def updateSheet(sheetId: SheetId, name: String, sheetType: SheetType.Value): Unit = {
         // TODO 변경되지 않았으면 무시
-        passwordMgr.sheet.updateSheet(sheet, name, sheetType) foreach { newSheetOpt =>
+        passwordMgr.sheet.updateSheet(sheetId, name, sheetType) foreach { newSheetOpt =>
             newSheetOpt foreach { newSheet =>
                 getDisplay.syncExec(() => {
-                    sheetList.replaceItem(sheet.id, sheetListItem(newSheet))
+                    sheetList.refreshAllItems()
                     // sheetView의 데이터 업데이트
-                    sheetView.setSheet(sheet)
+                    sheetView.refreshSheet()
                 })
             }
         }
     }
 
-    def updateSheetDetail(sheet: Sheet, fields: Seq[Field]): Unit = {
+    def updateSheetDetail(sheetId: SheetId, fields: Seq[Field]): Unit = {
         // TODO 변경되지 않았으면 무시
-        passwordMgr.sheetDetail.putSheetDetail(sheet, fields) foreach { newSheetDetailOpt =>
-            newSheetDetailOpt foreach { newSheetDetail =>
-                // TODO sheetView가 보이고 있는 시트가 여전히 sheet인지 확인
-                getDisplay.syncExec(() => sheetView.setDetailedSheet(newSheetDetail.sheet, newSheetDetail))
-            }
+        passwordMgr.sheetDetail.putSheetDetail(sheetId, fields) foreach { newSheetDetailOpt =>
+            // TODO sheetView가 보이고 있는 시트가 여전히 sheet인지 확인
+            getDisplay.syncExec(() => sheetView.refreshSheet())
         }
     }
 }

@@ -1,7 +1,8 @@
 package com.giyeok.passzero.ui.swt
 
 import java.util.concurrent.atomic.AtomicLong
-import com.giyeok.passzero.Password.Directory
+import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 import com.giyeok.passzero.utils.FutureStream
 import org.eclipse.swt.SWT
 import org.eclipse.swt.events.KeyEvent
@@ -20,13 +21,12 @@ import org.eclipse.swt.widgets.Composite
 import org.eclipse.swt.widgets.Display
 
 trait SortedListItem {
-    val id: String
     def >(other: SortedListItem): Boolean // = a > b
     def dimension(gc: GC): Point
     def draw(gc: GC, bounds: Rectangle, selected: Boolean): Unit
 }
 
-case class TextSortedListItem[T](data: T, id: String, text: String) extends SortedListItem {
+case class TextSortedListItem[T](data: T, text: String) extends SortedListItem {
     def >(other: SortedListItem): Boolean = other match {
         case otherItem: TextSortedListItem[_] => text > otherItem.text
     }
@@ -60,13 +60,16 @@ object SortedList {
 }
 
 // TODO 나중에 StructuredTextView로 바꾸는 것을 고려
-class SortedList[T <: SortedListItem](display: Display, parent: Composite, style: Int) extends Canvas(parent, style) {
-    private var items = Seq[T]()
-    private var allDimension: Option[Point] = None
-    private var itemBoundsMap = Map[(T, Int), Rectangle]()
+class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, style: Int, source: I => Future[T]) extends Canvas(parent, style) {
+    private var items = Seq[(I, T)]()
+    private var idToIndex = Map[I, Int]()
+    private var idToItem = Map[I, T]()
 
-    private var _selectedItem = Option.empty[Int]
-    def selectedItem: Option[(T, Int)] = _selectedItem map { idx => (items(idx), idx) }
+    private var allDimension: Option[Point] = None
+    private var itemBoundsMap = Map[I, (T, Rectangle)]()
+
+    private var _selectedId = Option.empty[I]
+    def selectedItem: Option[(I, T)] = _selectedId map { id => (id, ???) }
 
     private val sourceIdCounter = new AtomicLong(0)
     private def newSourceId(): Long = sourceIdCounter.incrementAndGet()
@@ -80,26 +83,25 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
     private val _scroll: Point = new Point(0, 0)
     private var showSelected: Boolean = false
 
-    private var _listeners: Seq[(Option[(T, Int)], Option[Point]) => Unit] = Seq()
+    private var _listeners: Seq[(Option[(I, T)], Option[Point]) => Unit] = Seq()
 
     setBackground(SortedList.baseBackgroundColor)
 
     def clear(): Unit = {
         items = Seq()
+        idToIndex = Map()
+        idToItem = Map()
         allDimension = None
         redraw()
     }
 
-    private def addItem(item: T, needsRedraw: Boolean): Int = {
-        val index = items.zipWithIndex find { p => p._1 > item } map { _._2 } getOrElse items.length
+    private def addItem(id: I, item: T, needsRedraw: Boolean): Int = {
+        val index = items.zipWithIndex find { p => p._1._2 > item } map { _._2 } getOrElse items.length
         val (init, tail) = items.splitAt(index)
-        val newList: Seq[T] = init ++ (item +: tail)
-        _selectedItem match {
-            case Some(idx) if idx >= index =>
-                _selectedItem = Some(idx + 1)
-            case _ => // do nothing
-        }
+        val newList: Seq[(I, T)] = init ++ ((id, item) +: tail)
         items = newList
+        idToIndex = (items.zipWithIndex map { p => p._1._1 -> p._2 }).toMap
+        idToItem += (id -> item)
         if (needsRedraw) {
             allDimension = None
             redraw()
@@ -107,49 +109,49 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
         index
     }
 
-    def removeItem(idx: Int, needsRedraw: Boolean = true): Unit = {
-        // TODO 현재 선택된 아이템이 제거되는 경우엔 선택 None으로
-        if (_selectedItem contains idx) {
-            _selectedItem = None
-        }
-        items = (items take idx) ++ (items drop (idx + 1))
-        if (needsRedraw) {
-            allDimension = None
-            redraw()
-        }
-    }
+    //    def removeItem(idx: Int, needsRedraw: Boolean = true): Unit = {
+    // TODO 현재 선택된 아이템이 제거되는 경우엔 선택 None으로
+    //        if (_selectedItem contains idx) {
+    //            _selectedItem = None
+    //        }
+    //        items = (items take idx) ++ (items drop (idx + 1))
+    //        if (needsRedraw) {
+    //            allDimension = None
+    //            redraw()
+    //        }
+    //    }
 
-    def replaceItem(idx: Int, newItem: T): Unit = {
-        // TODO 현재 선택된 아이템이 바뀌는 경우에도 listener는 호출하지 않음
-        // 순서는 유지해야 함
-        val wasSelected = _selectedItem contains idx
-        items = (items take idx) ++ (items drop (idx + 1))
-        val newIndex = addItem(newItem, needsRedraw = false)
-        if (wasSelected) {
-            _selectedItem = Some(newIndex)
-        }
-        allDimension = None
-        showSelected = true
-        redraw()
-    }
+    //    def replaceItem(idx: Int, newItem: T): Unit = {
+    // TODO 현재 선택된 아이템이 바뀌는 경우에도 listener는 호출하지 않음
+    // 순서는 유지해야 함
+    //        val wasSelected = _selectedItem contains idx
+    //        items = (items take idx) ++ (items drop (idx + 1))
+    //        val newIndex = addItem(newItem, needsRedraw = false)
+    //        if (wasSelected) {
+    //            _selectedItem = Some(newIndex)
+    //        }
+    //        allDimension = None
+    //        showSelected = true
+    //        redraw()
+    //    }
 
-    def replaceItem(id: String, newItem: T): Unit = {
-        val idx = items map { _.id } indexOf id
-        if (idx < 0) {
-            ???
-        } else {
-            replaceItem(idx, newItem)
-        }
-    }
+    //    def replaceItem(id: String, newItem: T): Unit = {
+    //        val idx = items map { _.id } indexOf id
+    //        if (idx < 0) {
+    //            ???
+    //        } else {
+    //            replaceItem(idx, newItem)
+    //        }
+    //    }
 
-    def setSource(stream: FutureStream[Seq[T]]): Unit = {
+    def setSource(stream: FutureStream[Seq[(I, T)]]): Unit = {
         clear()
         setProgress(true)
         val currentSourceId = newSourceId()
         stream foreach { (page, tail) =>
             this.synchronized {
                 if (this.sourceIdCounter.get() == currentSourceId) {
-                    page foreach { addItem(_, needsRedraw = false) }
+                    page foreach { p => addItem(p._1, p._2, needsRedraw = false) }
                     allDimension = None // invalidate calculated dimension
                     if (tail.isEmpty) {
                         display.syncExec(() => { setProgress(false) })
@@ -163,20 +165,15 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
         }
     }
 
-    def addSelectListener(func: (Option[(T, Int)], Option[Point]) => Unit): Unit = {
+    def addSelectListener(func: (Option[(I, T)], Option[Point]) => Unit): Unit = {
         _listeners +:= func
     }
 
-    def select(item: Option[(T, Int)], pointOpt: Option[Point]): Unit = {
-        _selectedItem = item map { _._2 }
-        _listeners foreach { f => f(item, pointOpt) }
+    def select(id: Option[I], pointOpt: Option[Point]): Unit = {
+        _selectedId = id
+        _listeners foreach { f => f(id map { i => (i, idToItem(i)) }, pointOpt) }
         showSelected = true
         display.asyncExec(() => redraw())
-    }
-
-    def selectIndex(index: Option[Int], pointOpt: Option[Point]): Unit = {
-        _selectedItem = index
-        select(index map { idx => (items(idx), idx) }, pointOpt)
     }
 
     addPaintListener(new PaintListener {
@@ -185,12 +182,12 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
             if (allDimension.isEmpty) {
                 itemBoundsMap = Map()
                 val dimension = new Point(0, 0)
-                items.zipWithIndex foreach { itemIdx =>
-                    val (item, index) = itemIdx
+                items foreach { idItem =>
+                    val (id, item) = idItem
                     val d = item.dimension(gc)
 
                     val itemBound = new Rectangle(0, dimension.y, d.x, d.y)
-                    itemBoundsMap += (itemIdx -> itemBound)
+                    itemBoundsMap += (id -> (item, itemBound))
 
                     dimension.x = math.max(dimension.x, d.x)
                     dimension.y += d.y
@@ -202,8 +199,8 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
             val bounds = getBounds
 
             if (showSelected) {
-                selectedItem foreach { selected =>
-                    val bound = itemBoundsMap(selected)
+                _selectedId foreach { selected =>
+                    val (item, bound) = itemBoundsMap(selected)
                     if (bound.y + bound.height - _scroll.y > bounds.height) {
                         _scroll.y = (bound.y + bound.height) - bounds.height
                     }
@@ -228,11 +225,11 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
             }
 
             itemBoundsMap foreach { itemBound =>
-                val ((item, idx), bound) = itemBound
+                val (id, (item, bound)) = itemBound
 
                 if (bound.y < bounds.height || (bound.y + bound.height) > bounds.y) {
                     if (bound.x < bounds.width || (bound.x + bound.width) > bounds.x) {
-                        val isSelected = _selectedItem contains idx
+                        val isSelected = _selectedId contains id
                         val scrolledBound = new Rectangle(bound.x - _scroll.x, bound.y - _scroll.y, bound.width, bound.height)
                         if (scrolledBound.width < 0) scrolledBound.width = getBounds.width
                         item.draw(gc, scrolledBound, isSelected)
@@ -258,8 +255,8 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
 
         override def mouseDown(e: MouseEvent): Unit = {
             val p = new Point(e.x + _scroll.x, e.y + _scroll.y)
-            val selected = itemBoundsMap find { item => refineRectangle(item._2).contains(p) }
-            select(selected map { _._1 }, selected map { x => new Point(p.x - x._2.x, p.y - x._2.y) })
+            val selected = itemBoundsMap find { item => refineRectangle(item._2._2).contains(p) }
+            select(selected map { _._1 }, selected map { x => new Point(p.x - x._2._2.x, p.y - x._2._2.y) })
         }
     })
 
@@ -274,23 +271,27 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
         override def keyPressed(e: KeyEvent): Unit = {
             e.keyCode match {
                 case SWT.ARROW_DOWN =>
-                    _selectedItem match {
-                        case Some(idx) if idx + 1 < items.length => selectIndex(Some(idx + 1), None)
+                    _selectedId match {
+                        case Some(id) if idToIndex(id) + 1 < items.length =>
+                            select(Some(items(idToIndex(id) + 1)._1), None)
                         case _ => // do nothing
                     }
                 case SWT.ARROW_UP =>
-                    _selectedItem match {
-                        case Some(idx) if idx > 0 => selectIndex(Some(idx - 1), None)
+                    _selectedId match {
+                        case Some(id) if idToIndex(id) > 0 =>
+                            select(Some(items(idToIndex(id) - 1)._1), None)
                         case _ => // do nothing
                     }
                 case SWT.HOME =>
-                    _selectedItem match {
-                        case Some(_) => selectIndex(Some(0), None)
+                    _selectedId match {
+                        case Some(_) =>
+                            select(Some(items(0)._1), None)
                         case _ => // do nothing
                     }
                 case SWT.END =>
-                    _selectedItem match {
-                        case Some(_) => selectIndex(Some(items.length - 1), None)
+                    _selectedId match {
+                        case Some(_) =>
+                            select(Some(items.last._1), None)
                         case _ => // do nothing
                     }
                 case _ => // do nothing
@@ -300,10 +301,29 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
         override def keyReleased(e: KeyEvent): Unit = {}
     })
 
-    def transformItems(func: T => T): Unit = {
-        val newItems = items map func
-        items = newItems
+    private def allRedraw(): Unit = {
         allDimension = None
+        itemBoundsMap = Map()
         redraw()
+    }
+
+    def refreshAllItems(): Unit = {
+        implicit val ec = ExecutionContext.global
+
+        val oldItems = items
+        items = Seq()
+
+        setProgress(true)
+        allRedraw()
+        val futures = oldItems map { _._1 } map { id =>
+            val future = source(id)
+            future foreach { item =>
+                display.syncExec(() => addItem(id, item, needsRedraw = true))
+            }
+            future
+        }
+        Future.sequence(futures) foreach { _ =>
+            display.syncExec(() => setProgress(false))
+        }
     }
 }

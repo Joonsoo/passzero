@@ -1,11 +1,12 @@
 package com.giyeok.passzero.ui.swt
 
-import com.giyeok.passzero.Password.Directory
+import com.giyeok.passzero.Password.DirectoryId
+import com.giyeok.passzero.Password.DirectoryInfo
 import com.giyeok.passzero.Password.Field
-import com.giyeok.passzero.Password.Sheet
 import com.giyeok.passzero.Password.SheetDetail
+import com.giyeok.passzero.Password.SheetId
+import com.giyeok.passzero.Password.SheetInfo
 import com.giyeok.passzero.Password.SheetType
-import com.giyeok.passzero.PasswordManager
 import com.giyeok.passzero.ui.Config
 import org.eclipse.swt.SWT
 import org.eclipse.swt.custom.ScrolledComposite
@@ -136,24 +137,24 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
         setBackground(SheetContentView.baseBackgroundColor)
     }
 
-    private class DirectoryContent(directory: Directory) extends Composite(content, SWT.NONE) with EditableContent with WidgetUtil with GridLayoutUtil {
+    private class DirectoryContent(id: DirectoryId, info: DirectoryInfo) extends Composite(content, SWT.NONE) with EditableContent with WidgetUtil with GridLayoutUtil {
         setLayout(gridLayoutNoMargin(2, equalWidths = false))
         setBackground(SheetContentView.baseBackgroundColor)
 
         label(config.stringRegistry.get("Directory:"), leftLabel())
-        private val directoryName = text(directory.name, SWT.READ_ONLY, horizontalFill())
+        private val directoryName = text(info.name, SWT.READ_ONLY, horizontalFill())
 
         def editMode(): Unit = {
             directoryName.setEditable(true)
         }
         def commit(): Unit = {
             this.setEnabled(false)
-            passwordUi.updateDirectory(directory, directoryName.getText)
+            passwordUi.updateDirectory(id, directoryName.getText)
             // 업데이트가 완료되면 이 Content는 다른 내용으로 치환될 것
         }
         def cancel(): Unit = {
             directoryName.setEditable(false)
-            directoryName.setText(directory.name)
+            directoryName.setText(info.name)
         }
     }
 
@@ -161,18 +162,18 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
         replaceContent(() => new EmptyContent())
     }
 
-    private class SheetContent(sheet: Sheet, fields: Seq[Field]) extends Composite(content, SWT.NONE) with EditableContent with WidgetUtil with GridLayoutUtil {
+    private class SheetContent(id: SheetId, info: SheetInfo, fields: Seq[Field]) extends Composite(content, SWT.NONE) with EditableContent with WidgetUtil with GridLayoutUtil {
         setLayout(gridLayoutNoMargin(2, equalWidths = false))
         setBackground(SheetContentView.baseBackgroundColor)
 
         label(config.stringRegistry.get("Directory:"), leftLabel())
-        private val directoryName = text(sheet.directory.name, SWT.READ_ONLY, horizontalFill())
+        private val directoryName = text("todo", SWT.READ_ONLY, horizontalFill())
 
         label(config.stringRegistry.get("Type:"), leftLabel())
-        private val sheetType = label(config.stringRegistry.get(SheetType.mapping(sheet.sheetType)))
+        private val sheetType = label(config.stringRegistry.get(SheetType.mapping(info.sheetType)))
 
         label(config.stringRegistry.get("Sheet:"), leftLabel())
-        private val sheetName = text(sheet.name, SWT.READ_ONLY, horizontalFill())
+        private val sheetName = text(info.name, SWT.READ_ONLY, horizontalFill())
 
         def editMode(): Unit = {
             directoryName.setEditable(true)
@@ -180,29 +181,34 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
         }
         def commit(): Unit = {
             this.setEnabled(false)
-            passwordUi.updateDirectory(sheet.directory, directoryName.getText)
+            passwordUi.updateDirectory(id.directoryId, directoryName.getText)
             // TODO sheet Type 업데이트
-            passwordUi.updateSheet(sheet, sheetName.getText, sheet.sheetType)
-            passwordUi.updateSheetDetail(sheet, fields)
+            passwordUi.updateSheet(id, sheetName.getText, info.sheetType)
+            passwordUi.updateSheetDetail(id, fields)
             // 업데이트가 완료되면 이 Content는 다른 내용으로 치환될 것
         }
         def cancel(): Unit = {
             directoryName.setEditable(false)
             sheetName.setEditable(false)
-            directoryName.setText(sheet.directory.name)
-            sheetName.setText(sheet.name)
+            // directoryName.setText(id.directory.name)
+            sheetName.setText(info.name)
         }
     }
 
-    def setDirectory(directory: Directory): Unit = {
-        replaceContent(() => new DirectoryContent(directory))
+    def setDirectory(id: DirectoryId, info: DirectoryInfo): Unit = {
+        replaceContent(() => new DirectoryContent(id, info))
     }
 
-    def setSheet(sheet: Sheet): Unit = {
-        replaceContent(() => new SheetContent(sheet, Seq()))
+    def setSheet(id: SheetId, info: SheetInfo): Unit = {
+        // replaceContent(() => new SheetContent(sheetId, Seq()))
     }
 
-    def setDetailedSheet(sheet: Sheet, detail: SheetDetail): Unit = {
-        replaceContent(() => new SheetContent(sheet, Seq()))
+    def setSheetDetail(sheetId: SheetId, detail: Option[SheetDetail]): Unit = {
+        // replaceContent(() => new SheetContent(sheetId, Seq()))
+    }
+
+    // TODO passwordStore 받아서 처리하도록 수정
+    def refreshSheet(): Unit = {
+        // TODO
     }
 }

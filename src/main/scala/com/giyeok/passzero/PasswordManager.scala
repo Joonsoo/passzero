@@ -3,11 +3,13 @@ package com.giyeok.passzero
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.util.Random
-import com.giyeok.passzero.Password.Directory
+import com.giyeok.passzero.Password.DirectoryId
+import com.giyeok.passzero.Password.DirectoryInfo
 import com.giyeok.passzero.Password.Field
 import com.giyeok.passzero.Password.KeyType
-import com.giyeok.passzero.Password.Sheet
 import com.giyeok.passzero.Password.SheetDetail
+import com.giyeok.passzero.Password.SheetId
+import com.giyeok.passzero.Password.SheetInfo
 import com.giyeok.passzero.Password.SheetType
 import com.giyeok.passzero.storage.Path
 import com.giyeok.passzero.utils.FutureStream
@@ -17,49 +19,59 @@ import org.json4s._
 class PasswordManager(session: Session) {
     private implicit val ec = ExecutionContext.global
 
-    def directoryPath(directory: Directory): Path =
-        session.rootPath / directory.id
-    def sheetPath(sheet: Sheet): Path =
-        directoryPath(sheet.directory) / sheet.id
+    def directoryPath(directoryId: DirectoryId): Path =
+        session.rootPath / directoryId.id
+    def sheetPath(sheetId: SheetId): Path =
+        directoryPath(sheetId.directoryId) / sheetId.id
 
     def newId(): String =
         s"${System.currentTimeMillis()}_${Math.abs(Random.nextLong())}"
 
     object directory {
-        def infoJsonOf(directory: Directory): JValue =
-            "name" -> directory.name
+        def infoJsonOf(directoryInfo: DirectoryInfo): JValue =
+            "name" -> directoryInfo.name
 
-        private def directryOf(id: String, infoJson: JValue): Option[Directory] =
+        private def directoryInfoOf(infoJson: JValue): Option[DirectoryInfo] =
             infoJson \ "name" match {
                 case JString(directoryName) =>
-                    Some(Password.Directory(id, directoryName))
+                    Some(DirectoryInfo(directoryName))
                 case _ =>
                     // 잘못된 상황 - json 내용 오류?
                     None
             }
 
-        def directoryList(): FutureStream[Seq[Password.Directory]] = {
+        def get(id: DirectoryId): Future[Option[DirectoryInfo]] = {
+            session.getAsJson(directoryPath(id) / "info") map {
+                case Some(info) =>
+                    directoryInfoOf(info.content)
+                case None =>
+                    None
+            }
+        }
+
+        def directoryList(): FutureStream[Seq[(DirectoryId, DirectoryInfo)]] = {
             session.list(session.rootPath) map1 { page =>
-                Future.sequence(page map { meta =>
+                val s = page map { meta =>
                     session.getAsJson(meta.path / "info") map {
-                        case Some(info) =>
-                            directryOf(meta.path.name, info.content)
+                        case Some(entity) =>
+                            directoryInfoOf(entity.content) map { info => (DirectoryId(meta.path.name), info) }
                         case None =>
                             // 잘못된 상황 - 파싱 실패?
                             None
                     }
-                }) map { _.flatten }
+                }
+                Future.sequence(s) map { _.flatten }
             }
         }
 
-        def createDirectory(name: String): Future[Option[Directory]] = {
-            val id: String = newId()
-            val directory = Directory(id, name)
-            val path = directoryPath(directory)
+        def createDirectory(name: String): Future[Option[(DirectoryId, DirectoryInfo)]] = {
+            val id = DirectoryId(newId())
+            val info = DirectoryInfo(name)
+            val path = directoryPath(id)
             session.mkdir(path) flatMap {
                 case true =>
-                    session.putJson(path / "info", infoJsonOf(directory)) map {
-                        case true => Some(directory)
+                    session.putJson(path / "info", infoJsonOf(info)) map {
+                        case true => Some((id, info))
                         case false => None
                     }
                 case false =>
@@ -67,9 +79,9 @@ class PasswordManager(session: Session) {
             }
         }
 
-        def updateDirectory(directory: Directory, name: String): Future[Option[Directory]] = {
-            val path = directoryPath(directory)
-            val newDirectory = Directory(directory.id, name)
+        def updateDirectory(directoryId: DirectoryId, name: String): Future[Option[DirectoryInfo]] = {
+            val path = directoryPath(directoryId)
+            val newDirectory = DirectoryInfo(name)
             session.putJson(path / "info", infoJsonOf(newDirectory)) map {
                 case true => Some(newDirectory)
                 case false => None
@@ -78,50 +90,58 @@ class PasswordManager(session: Session) {
     }
 
     object sheet {
-        def infoJsonOf(sheet: Sheet): JValue =
+        def infoJsonOf(sheet: SheetInfo): JValue =
             ("name" -> sheet.name) ~ ("type" -> SheetType.mapping(sheet.sheetType))
 
-        private def sheetOf(directory: Directory, id: String, infoJson: JValue): Option[Sheet] =
+        private def sheetOf(id: SheetId, infoJson: JValue): Option[SheetInfo] =
             (infoJson \ "name", infoJson \ "type") match {
                 case (JString(sheetName), JString(Password.SheetType(sheetType))) =>
-                    Some(Password.Sheet(directory, id, sheetName, sheetType))
+                    Some(SheetInfo(sheetName, sheetType))
                 case _ =>
                     // 잘못된 상황
                     None
             }
 
-        def sheetList(directory: Password.Directory): FutureStream[Seq[Password.Sheet]] = {
-            session.list(directoryPath(directory)) map1 { page =>
-                Future.sequence(page map { meta =>
+        def get(sheetId: SheetId): Future[Option[SheetInfo]] = {
+            session.getAsJson(sheetPath(sheetId)) map {
+                case Some(entity) => sheetOf(sheetId, entity.content)
+                case None => None
+            }
+        }
+
+        def sheetList(directoryId: DirectoryId): FutureStream[Seq[(SheetId, SheetInfo)]] = {
+            session.list(directoryPath(directoryId)) map1 { page =>
+                val s = page map { meta =>
                     session.getAsJson(meta.path / "info") map {
-                        case Some(info) =>
-                            sheetOf(directory, meta.path.name, info.content)
+                        case Some(entity) =>
+                            val id = SheetId(directoryId, meta.path.name)
+                            sheetOf(id, entity.content) map { (id, _) }
                         case None =>
                             // 잘못된 상황 - 파싱 실패?
                             None
                     }
-                }) map { _.flatten }
+                }
+                Future.sequence(s) map { _.flatten }
             }
         }
 
-        def createSheet(directory: Directory, name: String, sheetType: SheetType.Value): Future[Option[Sheet]] = {
-            val id: String = newId()
-            val sheet = Sheet(directory, id, name, sheetType)
-            val path = sheetPath(sheet)
+        def createSheet(directoryId: DirectoryId, name: String, sheetType: SheetType.Value): Future[Option[(SheetId, SheetInfo)]] = {
+            val id = SheetId(directoryId, newId())
+            val info = SheetInfo(name, sheetType)
+            val path = sheetPath(id)
             session.mkdir(path) flatMap {
                 case true =>
-                    session.putJson(path / "info", infoJsonOf(sheet)) map {
-                        case true => Some(sheet)
+                    session.putJson(path / "info", infoJsonOf(info)) map {
+                        case true => Some((id, info))
                         case false => None
                     }
                 case false => Future.successful(None)
             }
         }
 
-        def updateSheet(sheet: Sheet, name: String, sheetType: SheetType.Value): Future[Option[Sheet]] = {
-            val newSheet = Sheet(sheet.directory, sheet.id, name, sheetType)
-            val path = sheetPath(sheet)
-            session.putJson(path / "info", infoJsonOf(newSheet)) map {
+        def updateSheet(sheetId: SheetId, name: String, sheetType: SheetType.Value): Future[Option[SheetInfo]] = {
+            val newSheet = SheetInfo(name, sheetType)
+            session.putJson(sheetPath(sheetId) / "info", infoJsonOf(newSheet)) map {
                 case true => Some(newSheet)
                 case false => None
             }
@@ -134,7 +154,7 @@ class PasswordManager(session: Session) {
                 ("key" -> KeyType.mapping(field.key)) ~ ("v" -> field.value)
             }
 
-        private def sheetDetailOf(sheet: Sheet, infoJson: JValue): Option[SheetDetail] = {
+        private def sheetDetailOf(sheetId: SheetId, infoJson: JValue): Option[SheetDetail] = {
             val fields: Seq[Option[Field]] = infoJson match {
                 case JArray(seq) =>
                     seq map {
@@ -144,18 +164,18 @@ class PasswordManager(session: Session) {
                     }
                 case _ => Seq(None)
             }
-            if (fields contains None) None else Some(SheetDetail(sheet, fields.flatten))
+            if (fields contains None) None else Some(SheetDetail(fields.flatten))
         }
 
-        def sheetDetail(sheet: Password.Sheet): Future[Option[SheetDetail]] =
-            session.getAsJson(sheetPath(sheet) / "detail") map {
-                case Some(entity) => sheetDetailOf(sheet, entity.content)
+        def sheetDetail(sheetId: SheetId): Future[Option[SheetDetail]] =
+            session.getAsJson(sheetPath(sheetId) / "detail") map {
+                case Some(entity) => sheetDetailOf(sheetId, entity.content)
                 case None => None
             }
 
-        def putSheetDetail(sheet: Password.Sheet, fields: Seq[Field]): Future[Option[SheetDetail]] = {
-            val path = sheetPath(sheet)
-            val detail = SheetDetail(sheet, fields)
+        def putSheetDetail(sheetId: SheetId, fields: Seq[Field]): Future[Option[SheetDetail]] = {
+            val path = sheetPath(sheetId)
+            val detail = SheetDetail(fields)
             session.putJson(path / "detail", jsonOf(detail)) map {
                 case true => Some(detail)
                 case false => None
@@ -165,8 +185,6 @@ class PasswordManager(session: Session) {
 }
 
 object Password {
-    case class Directory(id: String, name: String)
-
     object SheetType extends Enumeration {
         val Login, Note, Unknown = Value
 
@@ -179,9 +197,6 @@ object Password {
 
         def of(name: String): SheetType.Value = reverse(name)
         def unapply(name: String): Option[SheetType.Value] = reverse get name
-    }
-    case class Sheet(directory: Directory, id: String, name: String, sheetType: SheetType.Value) {
-        def updateDirectory(newDirectory: Directory): Sheet = Sheet(newDirectory, id, name, sheetType)
     }
 
     object KeyType extends Enumeration {
@@ -199,6 +214,13 @@ object Password {
         def of(name: String): KeyType.Value = reverse(name)
         def unapply(name: String): Option[KeyType.Value] = reverse get name
     }
-    case class Field(sheet: Sheet, key: KeyType.Value, value: String)
-    case class SheetDetail(sheet: Sheet, fields: Seq[Field])
+
+    case class DirectoryId(id: String)
+    case class DirectoryInfo(name: String)
+
+    case class SheetId(directoryId: DirectoryId, id: String)
+    case class SheetInfo(name: String, sheetType: SheetType.Value)
+
+    case class Field(key: KeyType.Value, value: String)
+    case class SheetDetail(fields: Seq[Field])
 }
