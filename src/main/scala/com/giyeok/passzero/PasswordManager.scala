@@ -122,7 +122,7 @@ class PasswordManager(session: Session) {
             val newSheet = Sheet(sheet.directory, sheet.id, name, sheetType)
             val path = sheetPath(sheet)
             session.putJson(path / "info", infoJsonOf(newSheet)) map {
-                case true => Some(sheet)
+                case true => Some(newSheet)
                 case false => None
             }
         }
@@ -168,29 +168,32 @@ object Password {
     case class Directory(id: String, name: String)
 
     object SheetType extends Enumeration {
-        val Login, Unknown = Value
+        val Login, Note, Unknown = Value
 
-        val mapping: Map[SheetType.Value, String] = Map(
-            Login -> "login"
+        val mapping = Map(
+            Login -> "login",
+            Note -> "note"
         )
-        val reverse: Map[String, SheetType.Value] =
+        val reverse =
             mapping map { x => x._2 -> x._1 }
 
         def of(name: String): SheetType.Value = reverse(name)
         def unapply(name: String): Option[SheetType.Value] = reverse get name
     }
-    case class Sheet(directory: Directory, id: String, name: String, sheetType: SheetType.Value)
+    case class Sheet(directory: Directory, id: String, name: String, sheetType: SheetType.Value) {
+        def updateDirectory(newDirectory: Directory): Sheet = Sheet(newDirectory, id, name, sheetType)
+    }
 
     object KeyType extends Enumeration {
         val Username, Password, Website, Note, Unknown = Value
 
-        val mapping: Map[KeyType.Value, String] = Map(
+        val mapping = Map(
             Username -> "username",
             Password -> "password",
             Website -> "website",
             Note -> "note"
         )
-        val reverse: Map[String, KeyType.Value] =
+        val reverse =
             mapping map { x => x._2 -> x._1 }
 
         def of(name: String): KeyType.Value = reverse(name)

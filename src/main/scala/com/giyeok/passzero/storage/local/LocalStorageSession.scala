@@ -35,7 +35,7 @@ class LocalStorageSession(
                 if (files.isEmpty) (Seq(), FutureStream.empty) else {
                     val next = files.tail
                     (Seq(files.head), Cons(Future {
-                        Thread.sleep(100); waiter(next)
+                        Thread.sleep(10); waiter(next)
                     }))
                 }
             waiter(files)

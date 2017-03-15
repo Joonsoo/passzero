@@ -1,6 +1,7 @@
 package com.giyeok.passzero.ui.swt
 
 import java.util.concurrent.atomic.AtomicLong
+import com.giyeok.passzero.Password.Directory
 import com.giyeok.passzero.utils.FutureStream
 import org.eclipse.swt.SWT
 import org.eclipse.swt.events.KeyEvent
@@ -19,14 +20,15 @@ import org.eclipse.swt.widgets.Composite
 import org.eclipse.swt.widgets.Display
 
 trait SortedListItem {
+    val id: String
     def >(other: SortedListItem): Boolean // = a > b
     def dimension(gc: GC): Point
     def draw(gc: GC, bounds: Rectangle, selected: Boolean): Unit
 }
 
-case class TextSortedListItem[T](data: T, text: String) extends SortedListItem {
+case class TextSortedListItem[T](data: T, id: String, text: String) extends SortedListItem {
     def >(other: SortedListItem): Boolean = other match {
-        case otherItem: TextSortedListItem[_] => text < otherItem.text
+        case otherItem: TextSortedListItem[_] => text > otherItem.text
     }
     def dimension(gc: GC): Point = {
         val p = gc.textExtent(text)
@@ -38,13 +40,15 @@ case class TextSortedListItem[T](data: T, text: String) extends SortedListItem {
         if (selected) {
             gc.setBackground(SortedList.selectedBackgroundColor)
             gc.fillRectangle(bounds)
-            gc.setForeground(SortedList.selectedBorderColor)
-            gc.drawRectangle(bounds.x, bounds.y, bounds.width - 1, bounds.height - 1)
-            gc.setForeground(SortedList.baseForegroundColor)
         } else {
             gc.setBackground(SortedList.baseBackgroundColor)
         }
         gc.drawText(text, bounds.x + 4, bounds.y + 2)
+        if (selected) {
+            gc.setForeground(SortedList.selectedBorderColor)
+            gc.drawRectangle(bounds.x, bounds.y, bounds.width - 1, bounds.height - 1)
+            gc.setForeground(SortedList.baseForegroundColor)
+        }
     }
 }
 
@@ -76,16 +80,17 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
     private val _scroll: Point = new Point(0, 0)
     private var showSelected: Boolean = false
 
-    private var _listeners: Seq[Option[(T, Int)] => Unit] = Seq()
+    private var _listeners: Seq[(Option[(T, Int)], Option[Point]) => Unit] = Seq()
 
     setBackground(SortedList.baseBackgroundColor)
 
     def clear(): Unit = {
         items = Seq()
         allDimension = None
+        redraw()
     }
 
-    private def addItem(item: T, redraw: Boolean): Unit = {
+    private def addItem(item: T, needsRedraw: Boolean): Int = {
         val index = items.zipWithIndex find { p => p._1 > item } map { _._2 } getOrElse items.length
         val (init, tail) = items.splitAt(index)
         val newList: Seq[T] = init ++ (item +: tail)
@@ -95,15 +100,46 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
             case _ => // do nothing
         }
         items = newList
+        if (needsRedraw) {
+            allDimension = None
+            redraw()
+        }
+        index
     }
 
-    def addItem(item: T): Unit = {
-        addItem(item, redraw = true)
+    def removeItem(idx: Int, needsRedraw: Boolean = true): Unit = {
+        // TODO 현재 선택된 아이템이 제거되는 경우엔 선택 None으로
+        if (_selectedItem contains idx) {
+            _selectedItem = None
+        }
+        items = (items take idx) ++ (items drop (idx + 1))
+        if (needsRedraw) {
+            allDimension = None
+            redraw()
+        }
     }
 
-    def removeItem(idx: Int): Unit = {
-        // TODO
-        ???
+    def replaceItem(idx: Int, newItem: T): Unit = {
+        // TODO 현재 선택된 아이템이 바뀌는 경우에도 listener는 호출하지 않음
+        // 순서는 유지해야 함
+        val wasSelected = _selectedItem contains idx
+        items = (items take idx) ++ (items drop (idx + 1))
+        val newIndex = addItem(newItem, needsRedraw = false)
+        if (wasSelected) {
+            _selectedItem = Some(newIndex)
+        }
+        allDimension = None
+        showSelected = true
+        redraw()
+    }
+
+    def replaceItem(id: String, newItem: T): Unit = {
+        val idx = items map { _.id } indexOf id
+        if (idx < 0) {
+            ???
+        } else {
+            replaceItem(idx, newItem)
+        }
     }
 
     def setSource(stream: FutureStream[Seq[T]]): Unit = {
@@ -113,7 +149,7 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
         stream foreach { (page, tail) =>
             this.synchronized {
                 if (this.sourceIdCounter.get() == currentSourceId) {
-                    page foreach { addItem(_, redraw = false) }
+                    page foreach { addItem(_, needsRedraw = false) }
                     allDimension = None // invalidate calculated dimension
                     if (tail.isEmpty) {
                         display.syncExec(() => { setProgress(false) })
@@ -127,20 +163,20 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
         }
     }
 
-    def addSelectListener(func: Option[(T, Int)] => Unit): Unit = {
+    def addSelectListener(func: (Option[(T, Int)], Option[Point]) => Unit): Unit = {
         _listeners +:= func
     }
 
-    def select(item: Option[(T, Int)]): Unit = {
+    def select(item: Option[(T, Int)], pointOpt: Option[Point]): Unit = {
         _selectedItem = item map { _._2 }
-        _listeners foreach { f => f(item) }
+        _listeners foreach { f => f(item, pointOpt) }
         showSelected = true
         display.asyncExec(() => redraw())
     }
 
-    def selectIndex(index: Option[Int]): Unit = {
+    def selectIndex(index: Option[Int], pointOpt: Option[Point]): Unit = {
         _selectedItem = index
-        select(index map { idx => (items(idx), idx) })
+        select(index map { idx => (items(idx), idx) }, pointOpt)
     }
 
     addPaintListener(new PaintListener {
@@ -222,7 +258,8 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
 
         override def mouseDown(e: MouseEvent): Unit = {
             val p = new Point(e.x + _scroll.x, e.y + _scroll.y)
-            select(itemBoundsMap find { item => refineRectangle(item._2).contains(p) } map { _._1 })
+            val selected = itemBoundsMap find { item => refineRectangle(item._2).contains(p) }
+            select(selected map { _._1 }, selected map { x => new Point(p.x - x._2.x, p.y - x._2.y) })
         }
     })
 
@@ -238,12 +275,22 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
             e.keyCode match {
                 case SWT.ARROW_DOWN =>
                     _selectedItem match {
-                        case Some(idx) if idx + 1 < items.length => selectIndex(Some(idx + 1))
+                        case Some(idx) if idx + 1 < items.length => selectIndex(Some(idx + 1), None)
                         case _ => // do nothing
                     }
                 case SWT.ARROW_UP =>
                     _selectedItem match {
-                        case Some(idx) if idx > 0 => selectIndex(Some(idx - 1))
+                        case Some(idx) if idx > 0 => selectIndex(Some(idx - 1), None)
+                        case _ => // do nothing
+                    }
+                case SWT.HOME =>
+                    _selectedItem match {
+                        case Some(_) => selectIndex(Some(0), None)
+                        case _ => // do nothing
+                    }
+                case SWT.END =>
+                    _selectedItem match {
+                        case Some(_) => selectIndex(Some(items.length - 1), None)
                         case _ => // do nothing
                     }
                 case _ => // do nothing
@@ -252,4 +299,11 @@ class SortedList[T <: SortedListItem](display: Display, parent: Composite, style
 
         override def keyReleased(e: KeyEvent): Unit = {}
     })
+
+    def transformItems(func: T => T): Unit = {
+        val newItems = items map func
+        items = newItems
+        allDimension = None
+        redraw()
+    }
 }

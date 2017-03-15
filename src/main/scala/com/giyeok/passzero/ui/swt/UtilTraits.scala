@@ -12,12 +12,14 @@ import org.eclipse.swt.layout.FormAttachment
 import org.eclipse.swt.layout.FormData
 import org.eclipse.swt.layout.FormLayout
 import org.eclipse.swt.layout.GridData
+import org.eclipse.swt.layout.GridLayout
 import org.eclipse.swt.widgets.Button
 import org.eclipse.swt.widgets.Composite
 import org.eclipse.swt.widgets.Control
 import org.eclipse.swt.widgets.Label
 import org.eclipse.swt.widgets.MessageBox
 import org.eclipse.swt.widgets.Shell
+import org.eclipse.swt.widgets.Text
 
 trait WidgetUtil extends Composite {
     def label(text: String, style: Int = SWT.NONE, layoutData: AnyRef = null): Label = {
@@ -41,6 +43,17 @@ trait WidgetUtil extends Composite {
     }
     def button(text: String, layoutData: AnyRef): Button =
         button(text, style = SWT.NONE, layoutData = layoutData)
+
+    def text(value: String, style: Int = SWT.NONE, layoutData: AnyRef = null): Text = {
+        val text = new Text(this, style)
+        text.setText(value)
+        if (layoutData != null) {
+            text.setLayoutData(layoutData)
+        }
+        text
+    }
+    def text(value: String, layoutData: AnyRef): Text =
+        text(value, style = SWT.NONE, layoutData = layoutData)
 }
 
 trait MessageBoxUtil extends Control {
@@ -54,6 +67,19 @@ trait MessageBoxUtil extends Control {
 }
 
 trait GridLayoutUtil extends Composite {
+    def gridLayoutNoMargin(columns: Int, equalWidths: Boolean): GridLayout = {
+        val layout = new GridLayout(columns, equalWidths)
+        layout.horizontalSpacing = 0
+        layout.verticalSpacing = 0
+        layout.marginTop = 0
+        layout.marginBottom = 0
+        layout.marginLeft = 0
+        layout.marginRight = 0
+        layout.marginWidth = 0
+        layout.marginHeight = 0
+        layout
+    }
+
     def leftLabel(): GridData = {
         val gd = new GridData()
         gd.horizontalAlignment = SWT.RIGHT
