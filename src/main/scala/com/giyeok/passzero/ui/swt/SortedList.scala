@@ -308,6 +308,7 @@ class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, st
     }
 
     def refreshAllItems(): Unit = {
+        // TODO Future가 완료되는대로 replace하는 식으로 수정해서 깜빡임 없애기
         implicit val ec = ExecutionContext.global
 
         val oldItems = items

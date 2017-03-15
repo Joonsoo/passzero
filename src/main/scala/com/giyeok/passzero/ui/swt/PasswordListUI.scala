@@ -29,7 +29,7 @@ class PasswordStore(passwordMgr: PasswordManager) {
         implicit val ec = ExecutionContext.global
         passwordMgr.sheet.get(id) flatMap {
             case Some(info) =>
-                passwordMgr.sheetDetail.sheetDetail(id) map { detail =>
+                passwordMgr.sheetDetail.get(id) map { detail =>
                     Some(info, detail)
                 }
             case None => Future.successful(None)
@@ -115,7 +115,7 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
         setSelectedSheet(selectedOpt map { _._1 })
     })
 
-    private val sheetView = new SheetContentView(config, this, SWT.NONE, this)
+    private val sheetView = new SheetContentView(config, this, SWT.NONE, this, passwordStore)
     sheetView.setLayoutData(fillAll())
     sheetView.emptyContent()
 
@@ -141,6 +141,7 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
 
     private def setSelectedDirectory(directoryOpt: Option[(DirectoryId, DirectoryInfo)]): Unit = {
         println(s"selectedDirectory: $directoryOpt")
+        sheetView.emptyContent()
         directoryOpt match {
             case Some((directoryId, directoryInfo)) =>
                 sheetList.setSource(passwordMgr.sheet.sheetList(directoryId) map { sheets =>
@@ -149,25 +150,18 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
                 sheetView.setDirectory(directoryId, directoryInfo)
             case None =>
                 sheetList.clear()
-                sheetView.emptyContent()
         }
     }
 
-    private def setSelectedSheet(sheetOpt: Option[SheetId]): Unit = {
-        println(s"selectedSheet: $sheetOpt")
-        sheetOpt foreach { sheet =>
-            passwordMgr.sheetDetail.sheetDetail(sheet) foreach { detailOpt =>
-                getDisplay.syncExec(() => {
-                    sheetView.setSheetDetail(sheet, detailOpt)
-                })
-            }
-        }
+    private def setSelectedSheet(sheetIdOpt: Option[SheetId]): Unit = {
+        println(s"selectedSheet: $sheetIdOpt")
+        sheetView.setSheet(sheetIdOpt)
     }
 
     def updateDirectory(directoryId: DirectoryId, name: String): Unit = {
         // TODO 변경되지 않았으면 무시
         passwordMgr.directory.updateDirectory(directoryId, name) foreach { newDirectoryOpt =>
-            newDirectoryOpt foreach { newDirectory =>
+            newDirectoryOpt foreach { newDirectoryInfo =>
                 getDisplay.syncExec(() => {
                     directoryList.refreshAllItems()
                     sheetList.refreshAllItems()
@@ -179,7 +173,7 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
     def updateSheet(sheetId: SheetId, name: String, sheetType: SheetType.Value): Unit = {
         // TODO 변경되지 않았으면 무시
         passwordMgr.sheet.updateSheet(sheetId, name, sheetType) foreach { newSheetOpt =>
-            newSheetOpt foreach { newSheet =>
+            newSheetOpt foreach { newSheetInfo =>
                 getDisplay.syncExec(() => {
                     sheetList.refreshAllItems()
                     // sheetView의 데이터 업데이트

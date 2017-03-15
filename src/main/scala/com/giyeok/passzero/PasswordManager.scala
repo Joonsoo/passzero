@@ -103,8 +103,9 @@ class PasswordManager(session: Session) {
             }
 
         def get(sheetId: SheetId): Future[Option[SheetInfo]] = {
-            session.getAsJson(sheetPath(sheetId)) map {
-                case Some(entity) => sheetOf(sheetId, entity.content)
+            session.getAsJson(sheetPath(sheetId) / "info") map {
+                case Some(entity) =>
+                    sheetOf(sheetId, entity.content)
                 case None => None
             }
         }
@@ -167,7 +168,7 @@ class PasswordManager(session: Session) {
             if (fields contains None) None else Some(SheetDetail(fields.flatten))
         }
 
-        def sheetDetail(sheetId: SheetId): Future[Option[SheetDetail]] =
+        def get(sheetId: SheetId): Future[Option[SheetDetail]] =
             session.getAsJson(sheetPath(sheetId) / "detail") map {
                 case Some(entity) => sheetDetailOf(sheetId, entity.content)
                 case None => None

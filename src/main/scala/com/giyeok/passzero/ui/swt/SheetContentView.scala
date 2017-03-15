@@ -1,5 +1,6 @@
 package com.giyeok.passzero.ui.swt
 
+import scala.concurrent.ExecutionContext
 import com.giyeok.passzero.Password.DirectoryId
 import com.giyeok.passzero.Password.DirectoryInfo
 import com.giyeok.passzero.Password.Field
@@ -24,7 +25,7 @@ object SheetContentView {
     val baseBackgroundColor = new Color(null, 255, 255, 255)
 }
 
-class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi: PasswordListUI)
+class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi: PasswordListUI, passwordStore: PasswordStore)
         extends Composite(parent, style) with WidgetUtil with FormLayoutUtil {
     setLayout(new FormLayout())
 
@@ -162,7 +163,8 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
         replaceContent(() => new EmptyContent())
     }
 
-    private class SheetContent(id: SheetId, info: SheetInfo, fields: Seq[Field]) extends Composite(content, SWT.NONE) with EditableContent with WidgetUtil with GridLayoutUtil {
+    private class SheetContent(id: SheetId, info: SheetInfo, detail: Option[SheetDetail])
+            extends Composite(content, SWT.NONE) with EditableContent with WidgetUtil with GridLayoutUtil {
         setLayout(gridLayoutNoMargin(2, equalWidths = false))
         setBackground(SheetContentView.baseBackgroundColor)
 
@@ -184,7 +186,7 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
             passwordUi.updateDirectory(id.directoryId, directoryName.getText)
             // TODO sheet Type 업데이트
             passwordUi.updateSheet(id, sheetName.getText, info.sheetType)
-            passwordUi.updateSheetDetail(id, fields)
+            // passwordUi.updateSheetDetail(id, fields)
             // 업데이트가 완료되면 이 Content는 다른 내용으로 치환될 것
         }
         def cancel(): Unit = {
@@ -199,16 +201,22 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
         replaceContent(() => new DirectoryContent(id, info))
     }
 
-    def setSheet(id: SheetId, info: SheetInfo): Unit = {
-        // replaceContent(() => new SheetContent(sheetId, Seq()))
-    }
-
-    def setSheetDetail(sheetId: SheetId, detail: Option[SheetDetail]): Unit = {
-        // replaceContent(() => new SheetContent(sheetId, Seq()))
+    private var selectedSheetId: Option[SheetId] = None
+    def setSheet(id: Option[SheetId]): Unit = {
+        selectedSheetId = id
+        refreshSheet()
     }
 
     // TODO passwordStore 받아서 처리하도록 수정
     def refreshSheet(): Unit = {
-        // TODO
+        // TODO progress 표시
+        implicit val ec = ExecutionContext.global
+        selectedSheetId foreach { sheetId =>
+            passwordStore.sheet(sheetId) foreach {
+                case Some((info, detail)) =>
+                    getDisplay.syncExec(() => replaceContent(() => new SheetContent(sheetId, info, detail)))
+                case None => // TODO error
+            }
+        }
     }
 }
