@@ -89,9 +89,9 @@ class Session(revision: Long, password: String, localKeys: LocalSecret, storageS
 
     def get(path: Path): Future[Option[Entity[Array[Byte]]]] = {
         // storage에서 (파일) path의 내용 디코딩해서 반환
-        storage.get(path) map {
-            _ map {
-                _ mapContent { content =>
+        storage.get(path) map { entityOpt =>
+            entityOpt map { entity =>
+                entity mapContent { content =>
                     val (initVecBytes, body) = content.splitAt(InitVec.length)
                     decode(body, InitVec(initVecBytes))
                 }

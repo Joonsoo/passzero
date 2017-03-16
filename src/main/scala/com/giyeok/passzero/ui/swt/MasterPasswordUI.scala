@@ -25,12 +25,12 @@ class MasterPasswordUI(val shell: Shell, parent: MainUI, style: Int, config: Con
 
     setLayout(new GridLayout(2, false))
 
-    private val passwordLabel = label(config.stringRegistry.get("Master Password:"), leftest().exclusiveTop())
+    private val passwordLabel = label(this, config.stringRegistry.get("Master Password:"), leftest().exclusiveTop())
     private val largerFont = modifyFont(passwordLabel.getFont, 18, SWT.NONE)
 
     passwordLabel.setFont(largerFont)
 
-    private val passwordLengthLabel = label("0", SWT.RIGHT, horizontalFill().exclusiveTop())
+    private val passwordLengthLabel = label(this, "0", SWT.RIGHT, horizontalFill().exclusiveTop())
     passwordLengthLabel.setFont(largerFont)
 
     private val password = new Text(this, SWT.PASSWORD | SWT.BORDER)

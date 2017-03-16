@@ -42,17 +42,17 @@ class InitializationUI(val shell: Shell, parent: MainUI, style: Int, config: Con
 
     setLayout(new GridLayout(3, false))
 
-    label(config.stringRegistry.get("Master Password:"), leftLabel())
+    label(this, config.stringRegistry.get("Master Password:"), leftLabel())
     private val password = new Text(this, SWT.PASSWORD | SWT.BORDER)
     password.setLayoutData(horizontalFill(2))
 
-    label(config.stringRegistry.get("Master Password Confirm:"), leftLabel())
+    label(this, config.stringRegistry.get("Master Password Confirm:"), leftLabel())
     private val passwordConfirm = new Text(this, SWT.PASSWORD | SWT.BORDER)
     passwordConfirm.setLayoutData(horizontalFill(2))
 
     // TODO 여기의 Secret Key는 EmergencyKitUI에서처럼 secret key 원본값 말고 master password로 암호화된 값으로 표시하자
-    label(config.stringRegistry.get("Secret Key:"), leftLabel())
-    private val secretKeyGenerationCheckBox = button(config.stringRegistry.get("New"), SWT.CHECK, leftest())
+    label(this, config.stringRegistry.get("Secret Key:"), leftLabel())
+    private val secretKeyGenerationCheckBox = button(this, config.stringRegistry.get("New"), SWT.CHECK, leftest())
     private val secretKey = new Text(this, SWT.BORDER)
     secretKey.setLayoutData(horizontalFill())
     secretKey.setEnabled(false)
@@ -159,12 +159,12 @@ class GoogleDriveStorageProfileTab(shell: Shell, parent: TabFolder, style: Int, 
         extends Composite(parent, style) with WidgetUtil with GridLayoutUtil {
     setLayout(new GridLayout(3, false))
 
-    label(config.stringRegistry.get("Google Drive AppName"), leftLabel())
+    label(this, config.stringRegistry.get("Google Drive AppName"), leftLabel())
     private val appNameText = new Text(this, SWT.BORDER)
     appNameText.setLayoutData(horizontalFill(2))
     appNameText.setText("passzero_app")
 
-    label(config.stringRegistry.get("client_secret.json path:"), leftLabel())
+    label(this, config.stringRegistry.get("client_secret.json path:"), leftLabel())
 
     private val clientSecretJsonPath = new Text(this, SWT.READ_ONLY | SWT.BORDER)
     clientSecretJsonPath.setLayoutData(horizontalFill())
@@ -187,7 +187,7 @@ class GoogleDriveStorageProfileTab(shell: Shell, parent: TabFolder, style: Int, 
         def widgetDefaultSelected(e: SelectionEvent): Unit = {}
     })
 
-    label(config.stringRegistry.get("Application Root"), leftLabel())
+    label(this, config.stringRegistry.get("Application Root"), leftLabel())
     private val appRootText = new Text(this, SWT.BORDER)
     appRootText.setLayoutData(horizontalFill(2))
     appRootText.setText("/passzero")
@@ -219,14 +219,14 @@ class LocalStorageProfileTab(shell: Shell, parent: Composite, style: Int, config
         extends Composite(parent, style) with WidgetUtil with GridLayoutUtil with FontUtil {
     setLayout(new GridLayout(3, false))
 
-    private val warningLabel = label(config.stringRegistry.get("!!! Not Recommended !!!"), horizontalFill(3))
+    private val warningLabel = label(this, config.stringRegistry.get("!!! Not Recommended !!!"), horizontalFill(3))
     private val redColor = new Color(getDisplay, 255, 0, 0)
     private val warningFont = modifyFont(warningLabel.getFont, 20, SWT.BOLD)
     warningLabel.setFont(warningFont)
     warningLabel.setForeground(redColor)
     warningLabel.setAlignment(SWT.CENTER)
 
-    label(config.stringRegistry.get("Root Directory:"), leftLabel())
+    label(this, config.stringRegistry.get("Root Directory:"), leftLabel())
     private val rootDirectoryPath = new Text(this, SWT.READ_ONLY | SWT.BORDER)
     rootDirectoryPath.setLayoutData(horizontalFill())
 

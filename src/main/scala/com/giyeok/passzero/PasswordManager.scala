@@ -156,16 +156,16 @@ class PasswordManager(session: Session) {
             }
 
         private def sheetDetailOf(sheetId: SheetId, infoJson: JValue): Option[SheetDetail] = {
-            val fields: Seq[Option[Field]] = infoJson match {
+            val fields: Seq[Field] = infoJson match {
                 case JArray(seq) =>
-                    seq map {
+                    seq flatMap {
                         case obj: JObject =>
-                            ???
+                            Some(Field(KeyType.reverse((obj \ "key").asInstanceOf[JString].s), (obj \ "v").asInstanceOf[JString].s))
                         case _ => None
                     }
-                case _ => Seq(None)
+                case _ => Seq()
             }
-            if (fields contains None) None else Some(SheetDetail(fields.flatten))
+            Some(SheetDetail(fields))
         }
 
         def get(sheetId: SheetId): Future[Option[SheetDetail]] =
@@ -175,9 +175,8 @@ class PasswordManager(session: Session) {
             }
 
         def putSheetDetail(sheetId: SheetId, fields: Seq[Field]): Future[Option[SheetDetail]] = {
-            val path = sheetPath(sheetId)
             val detail = SheetDetail(fields)
-            session.putJson(path / "detail", jsonOf(detail)) map {
+            session.putJson(sheetPath(sheetId) / "detail", jsonOf(detail)) map {
                 case true => Some(detail)
                 case false => None
             }

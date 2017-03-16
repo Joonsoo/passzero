@@ -22,38 +22,38 @@ import org.eclipse.swt.widgets.Shell
 import org.eclipse.swt.widgets.Text
 
 trait WidgetUtil extends Composite {
-    def label(text: String, style: Int = SWT.NONE, layoutData: AnyRef = null): Label = {
-        val label = new Label(this, style)
+    def label(parent: Composite, text: String, style: Int = SWT.NONE, layoutData: AnyRef = null): Label = {
+        val label = new Label(parent, style)
         label.setText(text)
         if (layoutData != null) {
             label.setLayoutData(layoutData)
         }
         label
     }
-    def label(text: String, layoutData: AnyRef): Label =
-        label(text, style = SWT.NONE, layoutData = layoutData)
+    def label(parent: Composite, text: String, layoutData: AnyRef): Label =
+        label(parent, text, style = SWT.NONE, layoutData = layoutData)
 
-    def button(text: String, style: Int = SWT.NONE, layoutData: AnyRef = null): Button = {
-        val button = new Button(this, style)
+    def button(parent: Composite, text: String, style: Int = SWT.NONE, layoutData: AnyRef = null): Button = {
+        val button = new Button(parent, style)
         button.setText(text)
         if (layoutData != null) {
             button.setLayoutData(layoutData)
         }
         button
     }
-    def button(text: String, layoutData: AnyRef): Button =
-        button(text, style = SWT.NONE, layoutData = layoutData)
+    def button(parent: Composite, text: String, layoutData: AnyRef): Button =
+        button(parent, text, style = SWT.NONE, layoutData = layoutData)
 
-    def text(value: String, style: Int = SWT.NONE, layoutData: AnyRef = null): Text = {
-        val text = new Text(this, style)
+    def text(parent: Composite, value: String, style: Int = SWT.NONE, layoutData: AnyRef = null): Text = {
+        val text = new Text(parent, style)
         text.setText(value)
         if (layoutData != null) {
             text.setLayoutData(layoutData)
         }
         text
     }
-    def text(value: String, layoutData: AnyRef): Text =
-        text(value, style = SWT.NONE, layoutData = layoutData)
+    def text(parent: Composite, value: String, layoutData: AnyRef): Text =
+        text(parent, value, style = SWT.NONE, layoutData = layoutData)
 }
 
 trait MessageBoxUtil extends Control {

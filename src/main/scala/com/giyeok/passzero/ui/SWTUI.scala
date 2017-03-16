@@ -10,7 +10,7 @@ object SWTUI {
         val display = new Display()
         val shell = new Shell(display)
 
-        shell.setBounds(50, 50, 500, 400)
+        shell.setBounds(50, 50, 600, 500)
         shell.setText(config.stringRegistry.get("MainTitle"))
 
         shell.setLayout(new FillLayout())

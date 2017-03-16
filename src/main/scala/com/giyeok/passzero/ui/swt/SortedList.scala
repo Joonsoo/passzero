@@ -69,7 +69,7 @@ class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, st
     private var itemBoundsMap = Map[I, (T, Rectangle)]()
 
     private var _selectedId = Option.empty[I]
-    def selectedItem: Option[(I, T)] = _selectedId map { id => (id, ???) }
+    def selectedId: Option[I] = _selectedId
 
     private val sourceIdCounter = new AtomicLong(0)
     private def newSourceId(): Long = sourceIdCounter.incrementAndGet()

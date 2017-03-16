@@ -9,6 +9,7 @@ import scala.util.Success
 import com.giyeok.passzero.Password.DirectoryId
 import com.giyeok.passzero.Password.DirectoryInfo
 import com.giyeok.passzero.Password.Field
+import com.giyeok.passzero.Password.KeyType
 import com.giyeok.passzero.Password.SheetDetail
 import com.giyeok.passzero.Password.SheetId
 import com.giyeok.passzero.Password.SheetInfo
@@ -47,12 +48,12 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
     shell.setText(config.stringRegistry.get("PasswordListUI"))
     setLayout(new GridLayout(3, true))
 
-    private val refreshAllBtn = button("Refresh All")
-    private val newDirectoryBtn = button("New Directory")
-    private val newSheetBtn = button("New Sheet")
-    private val copyBtn = button("Copy")
+    private val refreshAllBtn = button(this, "Refresh All")
+    private val newDirectoryBtn = button(this, "New Directory")
+    private val newSheetBtn = button(this, "New Sheet")
+    private val copyBtn = button(this, "Copy")
 
-    private val emergencyKitBtn = button("Emergency Kit", rightest(3))
+    private val emergencyKitBtn = button(this, "Emergency Kit", rightest(3))
 
     refreshAllBtn.addSelectionListener(new SelectionListener {
         def widgetSelected(e: SelectionEvent): Unit = {
@@ -72,9 +73,15 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
 
     newSheetBtn.addSelectionListener(new SelectionListener {
         def widgetSelected(e: SelectionEvent): Unit = {
-            directoryList.selectedItem foreach { selected =>
-                val directoryId = selected._1
-                passwordMgr.sheet.createSheet(directoryId, s"amazon.com ${Math.abs(Random.nextInt())}", SheetType.Login)
+            directoryList.selectedId foreach { directoryId =>
+                passwordMgr.sheet.createSheet(directoryId, s"amazon.com ${Math.abs(Random.nextInt())}", SheetType.Login) foreach { newSheetOpt =>
+                    newSheetOpt foreach { newSheet =>
+                        passwordMgr.sheetDetail.putSheetDetail(newSheet._1, Seq(
+                            Field(KeyType.Username, ""),
+                            Field(KeyType.Password, "")
+                        ))
+                    }
+                }
             }
         }
 

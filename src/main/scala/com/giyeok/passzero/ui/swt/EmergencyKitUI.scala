@@ -25,9 +25,9 @@ class EmergencyKitUI(val shell: Shell, parent: MainUI, style: Int, localInfo: Lo
     shell.setText(config.stringRegistry.get("EmergencyKitUI"))
     setLayout(new GridLayout(2, false))
 
-    label("", fillAll(2))
+    label(this, "", fillAll(2))
 
-    private val revisionLabel = label("Revision:", leftLabel())
+    private val revisionLabel = label(this, "Revision:", leftLabel())
     private val largerFont = modifyFont(revisionLabel.getFont, 14, SWT.NONE)
     revisionLabel.setFont(largerFont)
 
@@ -36,9 +36,9 @@ class EmergencyKitUI(val shell: Shell, parent: MainUI, style: Int, localInfo: Lo
     revisionText.setText(localInfo.revision.toString)
     revisionText.setFont(largerFont)
 
-    label("", fillAll(2))
+    label(this, "", fillAll(2))
 
-    private val secretKeyLabel = label("Secret Key:", leftLabel())
+    private val secretKeyLabel = label(this, "Secret Key:", leftLabel())
     secretKeyLabel.setFont(largerFont)
 
     private val secretKey = new Text(this, SWT.READ_ONLY | SWT.MULTI | SWT.WRAP)
@@ -46,9 +46,9 @@ class EmergencyKitUI(val shell: Shell, parent: MainUI, style: Int, localInfo: Lo
     secretKey.setText(localInfo.localSecret.toReadable)
     secretKey.setFont(largerFont)
 
-    label("", fillAll(2))
+    label(this, "", fillAll(2))
 
-    private val storageLabel = label("Storage:", leftLabel())
+    private val storageLabel = label(this, "Storage:", leftLabel())
     storageLabel.setFont(largerFont)
 
     private val storageInfo = new Text(this, SWT.READ_ONLY | SWT.MULTI | SWT.WRAP)
@@ -56,13 +56,13 @@ class EmergencyKitUI(val shell: Shell, parent: MainUI, style: Int, localInfo: Lo
     storageInfo.setText(localInfo.storageProfile.infoText)
     storageInfo.setFont(largerFont)
 
-    label("", fillAll(2))
+    label(this, "", fillAll(2))
 
-    private val pdfBtn = button("PDF")
+    private val pdfBtn = button(this, "PDF")
     pdfBtn.setFont(largerFont)
     pdfBtn.setLayoutData(leftest())
 
-    private val okBtn = button("OK")
+    private val okBtn = button(this, "OK")
     okBtn.setFont(largerFont)
     okBtn.setLayoutData(rightest())
 
