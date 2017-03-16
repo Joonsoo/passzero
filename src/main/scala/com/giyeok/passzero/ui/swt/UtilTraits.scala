@@ -3,6 +3,7 @@ package com.giyeok.passzero.ui.swt
 import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.duration.Duration
 import org.eclipse.swt.SWT
+import org.eclipse.swt.custom.CCombo
 import org.eclipse.swt.dnd.Clipboard
 import org.eclipse.swt.dnd.TextTransfer
 import org.eclipse.swt.events.DisposeEvent
@@ -14,6 +15,7 @@ import org.eclipse.swt.layout.FormLayout
 import org.eclipse.swt.layout.GridData
 import org.eclipse.swt.layout.GridLayout
 import org.eclipse.swt.widgets.Button
+import org.eclipse.swt.widgets.Combo
 import org.eclipse.swt.widgets.Composite
 import org.eclipse.swt.widgets.Control
 import org.eclipse.swt.widgets.Label
@@ -21,7 +23,7 @@ import org.eclipse.swt.widgets.MessageBox
 import org.eclipse.swt.widgets.Shell
 import org.eclipse.swt.widgets.Text
 
-trait WidgetUtil extends Composite {
+object WidgetUtil {
     def label(parent: Composite, text: String, style: Int = SWT.NONE, layoutData: AnyRef = null): Label = {
         val label = new Label(parent, style)
         label.setText(text)
@@ -54,9 +56,25 @@ trait WidgetUtil extends Composite {
     }
     def text(parent: Composite, value: String, layoutData: AnyRef): Text =
         text(parent, value, style = SWT.NONE, layoutData = layoutData)
+
+    def combo(parent: Composite, values: Seq[String], style: Int = SWT.NONE, layoutData: AnyRef = null): Combo = {
+        val widget = new Combo(parent, style)
+        values foreach widget.add
+        widget
+    }
+    def combo(parent: Composite, values: Seq[String], layoutData: AnyRef): Combo =
+        combo(parent, values, style = SWT.NONE, layoutData = layoutData)
+
+    def ccombo(parent: Composite, values: Seq[String], style: Int = SWT.NONE, layoutData: AnyRef = null): CCombo = {
+        val widget = new CCombo(parent, style)
+        values foreach widget.add
+        widget
+    }
+    def ccombo(parent: Composite, values: Seq[String], layoutData: AnyRef): CCombo =
+        ccombo(parent, values, style = SWT.NONE, layoutData = layoutData)
 }
 
-trait MessageBoxUtil extends Control {
+trait MessageBoxUtil {
     val shell: Shell
 
     def showMessage(message: String, style: Int = SWT.NONE): Unit = {
@@ -66,7 +84,7 @@ trait MessageBoxUtil extends Control {
     }
 }
 
-trait GridLayoutUtil extends Composite {
+object GridLayoutUtil {
     def gridLayoutNoMargin(columns: Int, equalWidths: Boolean): GridLayout = {
         val layout = new GridLayout(columns, equalWidths)
         layout.horizontalSpacing = 0
@@ -216,27 +234,33 @@ trait ClipboardUtil extends Control {
     })
 
     def putTextToClipboard(text: String, timeoutOpt: Option[Duration]): Unit = {
-        clipboard.setContents(Seq(text).toArray, Seq(TextTransfer.getInstance).toArray)
-        timeoutOpt foreach { timeout =>
-            // timeout이 Some이면 그 시간만큼 지난 후에 clipboard 지우기
-            val putId = putIdCounter.incrementAndGet()
-            lastClipboardPut = Some(putId, text)
-            // println(lastClipboardPut)
-            getDisplay.timerExec(timeout.toMillis.toInt, () => {
-                this.synchronized {
-                    // println(s"Removing $putId $lastClipboardPut")
-                    lastClipboardPut match {
-                        case Some((`putId`, lastText)) =>
-                            clipboard.getContents(TextTransfer.getInstance) match {
-                                case `lastText` =>
-                                    clipboard.clearContents()
-                                    println("Clipboard cleared")
-                                case _ => // nothing to do
-                            }
-                        case _ => // nothing to do
+        if (text == "") {
+            clipboard.clearContents()
+        } else {
+            clipboard.setContents(Seq(text).toArray, Seq(TextTransfer.getInstance).toArray)
+            timeoutOpt foreach { timeout =>
+                // timeout이 Some이면 그 시간만큼 지난 후에 clipboard 지우기
+                val putId = putIdCounter.incrementAndGet()
+                lastClipboardPut = Some(putId, text)
+                // println(lastClipboardPut)
+                getDisplay.timerExec(timeout.toMillis.toInt, () => {
+                    this.synchronized {
+                        // println(s"Removing $putId $lastClipboardPut")
+                        lastClipboardPut match {
+                            case Some((`putId`, lastText)) =>
+                                if (!clipboard.isDisposed) {
+                                    clipboard.getContents(TextTransfer.getInstance) match {
+                                        case `lastText` =>
+                                            clipboard.clearContents()
+                                            println("Clipboard cleared")
+                                        case _ => // nothing to do
+                                    }
+                                }
+                            case _ => // nothing to do
+                        }
                     }
-                }
-            })
+                })
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.giyeok.passzero
 
+import scala.collection.immutable.ListMap
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.util.Random
@@ -188,11 +189,11 @@ object Password {
     object SheetType extends Enumeration {
         val Login, Note, Unknown = Value
 
-        val mapping = Map(
+        val mapping = ListMap(
             Login -> "login",
             Note -> "note"
         )
-        val reverse =
+        val reverse: ListMap[String, SheetType.Value] =
             mapping map { x => x._2 -> x._1 }
 
         def of(name: String): SheetType.Value = reverse(name)
@@ -202,13 +203,13 @@ object Password {
     object KeyType extends Enumeration {
         val Username, Password, Website, Note, Unknown = Value
 
-        val mapping = Map(
+        val mapping = ListMap(
             Username -> "username",
             Password -> "password",
             Website -> "website",
             Note -> "note"
         )
-        val reverse =
+        val reverse: ListMap[String, KeyType.Value] =
             mapping map { x => x._2 -> x._1 }
 
         def of(name: String): KeyType.Value = reverse(name)

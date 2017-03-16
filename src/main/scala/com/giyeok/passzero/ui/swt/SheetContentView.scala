@@ -1,6 +1,7 @@
 package com.giyeok.passzero.ui.swt
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 import com.giyeok.passzero.Password.DirectoryId
 import com.giyeok.passzero.Password.DirectoryInfo
 import com.giyeok.passzero.Password.Field
@@ -10,7 +11,10 @@ import com.giyeok.passzero.Password.SheetId
 import com.giyeok.passzero.Password.SheetInfo
 import com.giyeok.passzero.Password.SheetType
 import com.giyeok.passzero.ui.Config
+import com.giyeok.passzero.ui.swt.GridLayoutUtil._
+import com.giyeok.passzero.ui.swt.WidgetUtil._
 import org.eclipse.swt.SWT
+import org.eclipse.swt.custom.CCombo
 import org.eclipse.swt.custom.ScrolledComposite
 import org.eclipse.swt.custom.StackLayout
 import org.eclipse.swt.events.SelectionEvent
@@ -19,9 +23,9 @@ import org.eclipse.swt.graphics.Color
 import org.eclipse.swt.layout.FillLayout
 import org.eclipse.swt.layout.FormLayout
 import org.eclipse.swt.widgets.Button
+import org.eclipse.swt.widgets.Combo
 import org.eclipse.swt.widgets.Composite
 import org.eclipse.swt.widgets.Control
-import org.eclipse.swt.widgets.Label
 import org.eclipse.swt.widgets.Text
 
 object SheetContentView {
@@ -30,7 +34,7 @@ object SheetContentView {
 }
 
 class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi: PasswordListUI, passwordStore: PasswordStore)
-        extends Composite(parent, style) with WidgetUtil with FormLayoutUtil {
+        extends Composite(parent, style) with FormLayoutUtil {
     setLayout(new FormLayout())
 
     private val content = new ScrolledComposite(this, SWT.H_SCROLL | SWT.V_SCROLL)
@@ -39,7 +43,7 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
 
     private var currentContent: Option[EditableContent] = None
 
-    class CommandButtons() extends Composite(SheetContentView.this, SWT.NONE) with GridLayoutUtil {
+    class CommandButtons() extends Composite(SheetContentView.this, SWT.NONE) {
         val stackLayout = new StackLayout
         stackLayout.marginHeight = 0
         stackLayout.marginWidth = 0
@@ -137,12 +141,12 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
         requestLayout()
     }
 
-    private class EmptyContent() extends Composite(content, SWT.NONE) with WidgetUtil with GridLayoutUtil {
+    private class EmptyContent() extends Composite(content, SWT.NONE) {
         setLayout(new FillLayout)
         setBackground(SheetContentView.baseBackgroundColor)
     }
 
-    private class DirectoryContent(id: DirectoryId, info: DirectoryInfo) extends Composite(content, SWT.NONE) with EditableContent with WidgetUtil with GridLayoutUtil {
+    private class DirectoryContent(id: DirectoryId, info: DirectoryInfo) extends Composite(content, SWT.NONE) with EditableContent {
         setLayout(gridLayoutNoMargin(2, equalWidths = false))
         setBackground(SheetContentView.baseBackgroundColor)
 
@@ -170,77 +174,112 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
     }
 
     private class SheetDetailContent(parent: Composite, id: SheetId, fields: Seq[Field])
-            extends Composite(parent, SWT.NONE) with EditableContent with WidgetUtil with GridLayoutUtil {
+            extends Composite(parent, SWT.NONE) with EditableContent with ClipboardUtil {
         setLayout(gridLayoutNoMargin(3, equalWidths = false))
         setBackground(SheetContentView.baseBackgroundColor)
 
-        private val fieldsControls: Seq[(Label, Text, Button)] = fields map { field =>
-            val keyType = label(this, config.stringRegistry.get(KeyType.mapping(field.key)), leftLabel())
-            val contentText = text(this, field.value, SWT.READ_ONLY, horizontalFill())
-            val removeField = button(this, "-", SWT.CHECK, rightest())
-            removeField.setVisible(false)
-            (keyType, contentText, removeField)
+        private class FieldView(key: KeyType.Value, value: String, startAsEditMode: Boolean = false) {
+            private var controls: Seq[Control] = Seq()
+            private var editControls: Option[(CCombo, Text, Button)] = None
+
+            def head: Control = controls.head
+            def last: Control = controls.last
+            def dispose(): Unit = {
+                controls foreach { _.dispose() }
+            }
+
+            def replaceControls(newControls: Seq[Control]): Unit = {
+                controls foreach { _.dispose() }
+                controls = newControls
+            }
+            def viewMode(): Unit = {
+                editControls = None
+                key match {
+                    case KeyType.Password =>
+                        val typeLabel = label(SheetDetailContent.this, config.stringRegistry.get(KeyType.mapping(key)), leftLabel())
+                        val passwordText = text(SheetDetailContent.this, "****", SWT.READ_ONLY, horizontalFill())
+                        val copyButton = button(SheetDetailContent.this, config.stringRegistry.get("Copy"), SWT.FLAT, rightest())
+                        passwordText.setBackground(SheetContentView.baseBackgroundColor)
+                        copyButton.addSelectionListener(new SelectionListener {
+                            override def widgetDefaultSelected(e: SelectionEvent): Unit = {}
+                            override def widgetSelected(e: SelectionEvent): Unit = {
+                                putTextToClipboard(value, Some(1.minute))
+                            }
+                        })
+                        replaceControls(Seq(typeLabel, passwordText, copyButton))
+                    case _ =>
+                        val typeLabel = label(SheetDetailContent.this, config.stringRegistry.get(KeyType.mapping(key)), leftLabel())
+                        val valueText = text(SheetDetailContent.this, value, SWT.READ_ONLY, horizontalFill(2))
+                        valueText.setBackground(SheetContentView.baseBackgroundColor)
+                        replaceControls(Seq(typeLabel, valueText))
+                }
+            }
+
+            // TODO password 생성기 추가
+            def editMode(): Unit = {
+                val typeSelector = ccombo(SheetDetailContent.this, KeyType.mapping.toSeq map { _._2 }, SWT.FLAT | SWT.READ_ONLY, leftLabel())
+                val valueText = text(SheetDetailContent.this, value, horizontalFill())
+                val removeButton = button(SheetDetailContent.this, "-", SWT.FLAT | SWT.CHECK, rightest())
+                typeSelector.select((KeyType.mapping.toSeq.zipWithIndex find { _._1._1 == key }).get._2)
+                valueText.setBackground(SheetContentView.editableBackgroundColor)
+                replaceControls(Seq(typeSelector, valueText, removeButton))
+                editControls = Some(typeSelector, valueText, removeButton)
+            }
+
+            def newField: Option[Field] = {
+                // editMode에서만 동작
+                editControls flatMap { c =>
+                    val (typeSelector, valueText, removeButton) = c
+                    if (removeButton.getSelection) None
+                    else Some(Field(KeyType.mapping.toSeq(typeSelector.getSelectionIndex)._1, valueText.getText))
+                }
+            }
+
+            if (startAsEditMode) editMode() else viewMode()
         }
+
+        private val fieldsControls: Seq[FieldView] = fields map { f => new FieldView(f.key, f.value) }
 
         private val newField = button(this, "+", leftest(3))
         newField.setVisible(false)
 
-        private var newFieldsControls = Seq[(Label, Text, Button)]()
+        private var newFieldsControls: Seq[FieldView] = Seq()
 
         newField.addSelectionListener(new SelectionListener {
             override def widgetDefaultSelected(e: SelectionEvent): Unit = {}
             override def widgetSelected(e: SelectionEvent): Unit = {
-                val newLabel = label(SheetDetailContent.this, KeyType.mapping(KeyType.Note), leftLabel())
-                val contentText = text(SheetDetailContent.this, "", horizontalFill())
-                val removeButton = button(SheetDetailContent.this, "-", SWT.CHECK, rightest())
-                contentText.setBackground(SheetContentView.editableBackgroundColor)
-                newFieldsControls :+= (newLabel, contentText, removeButton)
+                val fieldView = new FieldView(KeyType.Note, "", true)
+                newFieldsControls :+= fieldView
+                newField.moveBelow(fieldView.last)
                 SheetDetailContent.this.requestLayout()
             }
         })
 
         def editMode(): Unit = {
             newField.setVisible(true)
-            fieldsControls foreach { controls =>
-                val (label, value, removeButton) = controls
-                value.setEditable(true)
-                value.setBackground(SheetContentView.editableBackgroundColor)
-                removeButton.setVisible(true)
-            }
+            fieldsControls foreach { _.editMode() }
+            newField.moveBelow(getChildren.last)
+            requestLayout()
         }
 
         def commit(): Unit = {
-            val oldFields: Seq[Field] = fieldsControls flatMap { controls =>
-                val (label, value, removeButton) = controls
-                if (removeButton.getSelection) None else Some(Field(KeyType.reverse(label.getText), value.getText))
-            }
-            val newFields: Seq[Field] = newFieldsControls flatMap { controls =>
-                val (label, value, removeButton) = controls
-                if (removeButton.getSelection) None else Some(Field(KeyType.reverse(label.getText), value.getText))
-            }
+            val oldFields: Seq[Field] = fieldsControls flatMap { _.newField }
+            val newFields: Seq[Field] = newFieldsControls flatMap { _.newField }
             passwordUi.updateSheetDetail(id, oldFields ++ newFields)
         }
 
         def cancel(): Unit = {
             newField.setVisible(false)
-            fieldsControls foreach { controls =>
-                val (label, value, removeButton) = controls
-                value.setBackground(SheetContentView.baseBackgroundColor)
-                // TODO 기본값 복원
-                removeButton.setSelection(false)
-            }
-            newFieldsControls foreach { controls =>
-                val (label, value, removeButton) = controls
-                label.dispose()
-                value.dispose()
-                removeButton.dispose()
-            }
+            fieldsControls foreach { _.viewMode() }
+            newFieldsControls foreach { _.dispose() }
             newFieldsControls = Seq()
+            newField.moveBelow(getChildren.last)
+            requestLayout()
         }
     }
 
     private class SheetContent(id: SheetId, directoryInfo: DirectoryInfo, sheetInfo: SheetInfo, detail: Option[SheetDetail])
-            extends Composite(content, SWT.NONE) with EditableContent with WidgetUtil with GridLayoutUtil {
+            extends Composite(content, SWT.NONE) with EditableContent {
         setLayout(gridLayoutNoMargin(2, equalWidths = false))
         setBackground(SheetContentView.baseBackgroundColor)
 
@@ -262,6 +301,7 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
             sheetName.setEditable(true)
             sheetName.setBackground(SheetContentView.editableBackgroundColor)
             fieldsComposite.editMode()
+            requestLayout()
         }
         def commit(): Unit = {
             fieldsComposite.commit()
@@ -280,6 +320,7 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
             sheetName.setBackground(SheetContentView.baseBackgroundColor)
             // directoryName.setText(id.directory.name)
             sheetName.setText(sheetInfo.name)
+            requestLayout()
         }
     }
 
@@ -297,17 +338,20 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
     def refreshSheet(): Unit = {
         // TODO progress 표시
         implicit val ec = ExecutionContext.global
-        selectedSheetId foreach { sheetId =>
-            for {
-                directoryInfoOpt <- passwordStore.directory(sheetId.directoryId)
-                sheetInfoOpt <- passwordStore.sheet(sheetId)
-            } yield {
-                (directoryInfoOpt, sheetInfoOpt) match {
-                    case (Some(directoryInfo), Some((sheetInfo, detail))) =>
-                        getDisplay.syncExec(() => replaceContent(() => new SheetContent(sheetId, directoryInfo, sheetInfo, detail)))
-                    case _ => // TODO error
+        selectedSheetId match {
+            case Some(sheetId) =>
+                for {
+                    directoryInfoOpt <- passwordStore.directory(sheetId.directoryId)
+                    sheetInfoOpt <- passwordStore.sheet(sheetId)
+                } yield {
+                    (directoryInfoOpt, sheetInfoOpt) match {
+                        case (Some(directoryInfo), Some((sheetInfo, detail))) =>
+                            getDisplay.syncExec(() => replaceContent(() => new SheetContent(sheetId, directoryInfo, sheetInfo, detail)))
+                        case _ => // TODO error
+                    }
                 }
-            }
+            case None =>
+                replaceContent(() => new EmptyContent())
         }
     }
 }

@@ -3,6 +3,8 @@ package com.giyeok.passzero.ui.swt
 import java.io.File
 import com.giyeok.passzero.LocalInfo
 import com.giyeok.passzero.ui.Config
+import com.giyeok.passzero.ui.swt.GridLayoutUtil._
+import com.giyeok.passzero.ui.swt.WidgetUtil._
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.PDPageContentStream
@@ -21,7 +23,7 @@ import org.eclipse.swt.widgets.Text
 
 // TODO secret key를 master password로 한번 암호화해서 표시하자
 class EmergencyKitUI(val shell: Shell, parent: MainUI, style: Int, localInfo: LocalInfo, config: Config)
-        extends Composite(parent, style) with WidgetUtil with GridLayoutUtil with FontUtil with MessageBoxUtil {
+        extends Composite(parent, style) with FontUtil with MessageBoxUtil {
     shell.setText(config.stringRegistry.get("EmergencyKitUI"))
     setLayout(new GridLayout(2, false))
 

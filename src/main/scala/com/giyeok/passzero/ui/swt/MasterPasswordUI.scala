@@ -7,6 +7,8 @@ import scala.util.Success
 import scala.util.Try
 import com.giyeok.passzero.Session
 import com.giyeok.passzero.ui.Config
+import com.giyeok.passzero.ui.swt.GridLayoutUtil._
+import com.giyeok.passzero.ui.swt.WidgetUtil._
 import org.eclipse.swt.SWT
 import org.eclipse.swt.events.KeyEvent
 import org.eclipse.swt.events.KeyListener
@@ -20,7 +22,7 @@ import org.eclipse.swt.widgets.Shell
 import org.eclipse.swt.widgets.Text
 
 class MasterPasswordUI(val shell: Shell, parent: MainUI, style: Int, config: Config)
-        extends Composite(parent, style) with WidgetUtil with MessageBoxUtil with GridLayoutUtil with FontUtil {
+        extends Composite(parent, style) with MessageBoxUtil with FontUtil {
     shell.setText(config.stringRegistry.get("MasterPasswordUI"))
 
     setLayout(new GridLayout(2, false))

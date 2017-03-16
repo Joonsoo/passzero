@@ -17,11 +17,14 @@ import com.giyeok.passzero.Password.SheetType
 import com.giyeok.passzero.PasswordManager
 import com.giyeok.passzero.Session
 import com.giyeok.passzero.ui.Config
+import com.giyeok.passzero.ui.swt.GridLayoutUtil._
+import com.giyeok.passzero.ui.swt.WidgetUtil._
 import org.eclipse.swt.SWT
 import org.eclipse.swt.events.SelectionEvent
 import org.eclipse.swt.events.SelectionListener
 import org.eclipse.swt.layout.GridLayout
 import org.eclipse.swt.widgets.Composite
+import org.eclipse.swt.widgets.Sash
 import org.eclipse.swt.widgets.Shell
 
 class PasswordStore(passwordMgr: PasswordManager) {
@@ -39,7 +42,7 @@ class PasswordStore(passwordMgr: PasswordManager) {
 }
 
 class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Session, config: Config)
-        extends Composite(parent, style) with WidgetUtil with ClipboardUtil with GridLayoutUtil with MessageBoxUtil {
+        extends Composite(parent, style) with ClipboardUtil with MessageBoxUtil {
     implicit private val ec = ExecutionContext.global
 
     private val passwordMgr = new PasswordManager(session)
@@ -53,7 +56,7 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
     private val newSheetBtn = button(this, "New Sheet")
     private val copyBtn = button(this, "Copy")
 
-    private val emergencyKitBtn = button(this, "Emergency Kit", rightest(3))
+    private val emergencyKitBtn = button(this, "Emergency Kit", rightest(2))
 
     refreshAllBtn.addSelectionListener(new SelectionListener {
         def widgetSelected(e: SelectionEvent): Unit = {

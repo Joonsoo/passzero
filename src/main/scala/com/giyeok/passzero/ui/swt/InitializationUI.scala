@@ -12,6 +12,8 @@ import com.giyeok.passzero.storage.StorageProfile
 import com.giyeok.passzero.storage.googledrive.GoogleDriveStorageProfile
 import com.giyeok.passzero.storage.local.LocalStorageProfile
 import com.giyeok.passzero.ui.Config
+import com.giyeok.passzero.ui.swt.GridLayoutUtil._
+import com.giyeok.passzero.ui.swt.WidgetUtil._
 import org.eclipse.swt.SWT
 import org.eclipse.swt.events.SelectionEvent
 import org.eclipse.swt.events.SelectionListener
@@ -28,7 +30,7 @@ import org.eclipse.swt.widgets.Text
 import org.json4s.native.JsonMethods._
 
 class InitializationUI(val shell: Shell, parent: MainUI, style: Int, config: Config)
-        extends Composite(parent, style) with WidgetUtil with MessageBoxUtil with GridLayoutUtil {
+        extends Composite(parent, style) with MessageBoxUtil {
     // 1. 새로 만들기 시에는
     //   - MasterPassword와 remote storage 설정을 하면 끝.
     //   - 설정이 완료되면 config.localInfoFile 위치에 저장하고 parent 상태 업데이트하고
@@ -155,8 +157,7 @@ class InitializationUI(val shell: Shell, parent: MainUI, style: Int, config: Con
     })
 }
 
-class GoogleDriveStorageProfileTab(shell: Shell, parent: TabFolder, style: Int, config: Config)
-        extends Composite(parent, style) with WidgetUtil with GridLayoutUtil {
+class GoogleDriveStorageProfileTab(shell: Shell, parent: TabFolder, style: Int, config: Config) extends Composite(parent, style) {
     setLayout(new GridLayout(3, false))
 
     label(this, config.stringRegistry.get("Google Drive AppName"), leftLabel())
@@ -215,8 +216,7 @@ class GoogleDriveStorageProfileTab(shell: Shell, parent: TabFolder, style: Int, 
     }
 }
 
-class LocalStorageProfileTab(shell: Shell, parent: Composite, style: Int, config: Config)
-        extends Composite(parent, style) with WidgetUtil with GridLayoutUtil with FontUtil {
+class LocalStorageProfileTab(shell: Shell, parent: Composite, style: Int, config: Config) extends Composite(parent, style) with FontUtil {
     setLayout(new GridLayout(3, false))
 
     private val warningLabel = label(this, config.stringRegistry.get("!!! Not Recommended !!!"), horizontalFill(3))
