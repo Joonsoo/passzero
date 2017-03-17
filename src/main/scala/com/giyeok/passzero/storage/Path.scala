@@ -6,7 +6,6 @@ class Path(val path: Seq[String]) {
 
     def isRoot: Boolean = path.isEmpty
 
-    def parent: Path = Path(path.init)
     def name: String = path.last
 
     def /(child: String): Path = Path(path :+ child)

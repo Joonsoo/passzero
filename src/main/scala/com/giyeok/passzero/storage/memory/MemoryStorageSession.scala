@@ -22,14 +22,14 @@ class MemoryStorageSession(val profile: MemoryStorageProfile) extends StorageSes
     def getMeta(path: Path): Future[Option[EntityMeta]] = ???
 
     def get(path: Path): Future[Option[Entity[Array[Byte]]]] =
-        Future { map get path map { p => Entity(p._1, p._2) } }
+        Future { map get path map { p => Entity(p._2) } }
 
     def putContent(path: Path, content: Array[Byte]): Future[Boolean] = Future {
         map get path match {
             case Some((meta, _)) =>
                 map(path) = (meta, content)
             case None =>
-                map(path) = (EntityMeta(path, path.string, Map()), content)
+                map(path) = (EntityMeta(path, path.string, ???, Map()), content)
         }
         true
     }

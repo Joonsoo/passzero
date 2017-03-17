@@ -1,6 +1,7 @@
 package com.giyeok.passzero.storage.googledrive
 
 import scala.collection.JavaConverters._
+import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import com.giyeok.passzero.StorageSessionManager
 import com.giyeok.passzero.storage.Entity
@@ -18,26 +19,47 @@ class GoogleDriveStorageSession(
         manager: StorageSessionManager,
         drive: Drive
 ) extends StorageSession {
+    private implicit val ec = ExecutionContext.global
+
     def list(path: Path): FutureStream[Seq[EntityMeta]] = {
-        val list = drive.files().list().execute()
-        val files = list.getFiles.iterator().asScala.toSeq
-        val page = files map { f => EntityMeta(path / f.getName, f.getId, Map()) }
-        drive.files().list().setPageToken(files.last.getId)
-        FutureStream.Nil
+        def filesFuture(pageTokenOpt: Option[String]): FutureStream[Seq[EntityMeta]] = {
+            val pageFuture = Future {
+                val list = drive.files().list().execute()
+                pageTokenOpt foreach { list.setNextPageToken }
+                val files = list.getFiles.iterator().asScala.toSeq
+                (files map { f => EntityMeta(path / f.getName, f.getId, ???, Map()) }, Option(list.getNextPageToken))
+                // drive.files().list().setPageToken(files.last.getId)
+            }
+            FutureStream.Cons(pageFuture map { pageNextToken =>
+                val (page, nextTokenOpt) = pageNextToken
+                nextTokenOpt match {
+                    case Some(nextToken) =>
+                        (page, filesFuture(Some(nextToken)))
+                    case None =>
+                        (page, FutureStream.Nil)
+                }
+            })
+        }
+        filesFuture(None)
     }
 
-    def getMeta(path: Path): Future[Option[EntityMeta]] =
-        Future.successful(None)
+    def getMeta(path: Path): Future[Option[EntityMeta]] = Future {
+        ???
+    }
 
-    def get(path: Path): Future[Option[Entity[Array[Byte]]]] =
-        Future.successful(None)
+    def get(path: Path): Future[Option[Entity[Array[Byte]]]] = Future {
+        ???
+    }
 
-    def putContent(path: Path, content: Array[Byte]): Future[Boolean] =
-        Future.successful(false)
+    def putContent(path: Path, content: Array[Byte]): Future[Boolean] = Future {
+        ???
+    }
 
-    def delete(path: Path, recursive: Boolean): Future[Boolean] =
-        Future.successful(false)
+    def delete(path: Path, recursive: Boolean): Future[Boolean] = Future {
+        ???
+    }
 
-    def mkdir(path: Path, recursive: Boolean): Future[Boolean] =
-        Future.successful(false)
+    def mkdir(path: Path, recursive: Boolean): Future[Boolean] = Future {
+        ???
+    }
 }

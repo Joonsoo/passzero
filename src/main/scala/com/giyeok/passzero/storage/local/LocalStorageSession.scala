@@ -9,6 +9,7 @@ import scala.util.Random
 import com.giyeok.passzero.StorageSessionManager
 import com.giyeok.passzero.storage.Entity
 import com.giyeok.passzero.storage.EntityMeta
+import com.giyeok.passzero.storage.EntityType
 import com.giyeok.passzero.storage.Path
 import com.giyeok.passzero.storage.StorageSession
 import com.giyeok.passzero.utils.ByteBuf
@@ -25,11 +26,14 @@ class LocalStorageSession(
     def pathFile(path: Path): File =
         new File(rootDirectory, path.string)
 
+    def entityTypeOf(file: File): EntityType.Value =
+        if (file.isDirectory) EntityType.Folder else EntityType.File
+
     def list(path: Path): FutureStream[Seq[EntityMeta]] = {
         val future = Future {
             val files = Random.shuffle(pathFile(path).list().toSeq map { name =>
                 val p = path / name
-                EntityMeta(p, p.string, Map())
+                EntityMeta(p, p.string, entityTypeOf(new File(p.string)), Map())
             })
             def waiter(files: Seq[EntityMeta]): (Seq[EntityMeta], FutureStream[Seq[EntityMeta]]) =
                 if (files.isEmpty) (Seq(), FutureStream.empty) else {
@@ -44,7 +48,8 @@ class LocalStorageSession(
     }
 
     def getMeta(path: Path): Future[Option[EntityMeta]] = Future {
-        if (pathFile(path).exists()) Some(EntityMeta(path, path.string, Map())) else None
+        val file = pathFile(path)
+        if (file.exists()) Some(EntityMeta(path, path.string, entityTypeOf(file), Map())) else None
     }
 
     def get(path: Path): Future[Option[Entity[Array[Byte]]]] = Future {
@@ -55,7 +60,7 @@ class LocalStorageSession(
             try {
                 val buf = new ByteBuf(100)
                 buf.writeStream(is)
-                Some(Entity(EntityMeta(path, path.string, Map()), buf.finish()))
+                Some(Entity(buf.finish()))
             } finally {
                 is.close()
             }
