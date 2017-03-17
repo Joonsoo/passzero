@@ -3,7 +3,6 @@ package com.giyeok.passzero.ui.swt
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.util.Failure
-import scala.util.Random
 import scala.util.Success
 import com.giyeok.passzero.Password.DirectoryId
 import com.giyeok.passzero.Password.DirectoryInfo
@@ -30,12 +29,17 @@ class PasswordStore(passwordMgr: PasswordManager) {
     def directory(id: DirectoryId): Future[Option[DirectoryInfo]] = passwordMgr.directory.get(id)
     def sheet(id: SheetId): Future[Option[(SheetInfo, Option[SheetDetail])]] = {
         implicit val ec = ExecutionContext.global
-        passwordMgr.sheet.get(id) flatMap {
-            case Some(info) =>
-                passwordMgr.sheetDetail.get(id) map { detail =>
-                    Some(info, detail)
-                }
-            case None => Future.successful(None)
+        val infoFuture = passwordMgr.sheet.get(id)
+        val detailFuture = passwordMgr.sheetDetail.get(id)
+
+        for {
+            infoOpt <- infoFuture
+            detailOpt <- detailFuture
+        } yield {
+            infoOpt match {
+                case Some(info) => Some(info, detailOpt)
+                case None => None
+            }
         }
     }
 }
@@ -141,6 +145,7 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
 
     private def start(): Unit = {
         directoryList.clear()
+        directoryList.setProgress(true)
         sheetList.clear()
         sheetView.emptyContent()
         session.ensureInitialized() onComplete {

@@ -1,5 +1,6 @@
 package com.giyeok.passzero.storage
 
+import com.giyeok.passzero.storage.dropbox.DropboxStorageProfile
 import com.giyeok.passzero.storage.googledrive.GoogleDriveStorageProfile
 import com.giyeok.passzero.storage.local.LocalStorageProfile
 import com.giyeok.passzero.storage.memory.MemoryStorageProfile
@@ -13,7 +14,8 @@ object Storages {
     val specs: Seq[StorageProfileSpec] = Seq(
         MemoryStorageProfile,
         LocalStorageProfile,
-        GoogleDriveStorageProfile
+        GoogleDriveStorageProfile,
+        DropboxStorageProfile
     )
 
     val specNames: Seq[String] = specs map { _.name }

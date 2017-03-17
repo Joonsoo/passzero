@@ -75,7 +75,7 @@ class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, st
     private def newSourceId(): Long = sourceIdCounter.incrementAndGet()
 
     private var _progress: Boolean = false
-    private def setProgress(progress: Boolean): Unit = {
+    def setProgress(progress: Boolean): Unit = {
         _progress = progress
         redraw()
     }

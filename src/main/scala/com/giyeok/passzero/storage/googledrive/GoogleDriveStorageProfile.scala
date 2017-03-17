@@ -1,17 +1,19 @@
 package com.giyeok.passzero.storage.googledrive
 
 import java.io
+import java.io.ByteArrayInputStream
 import java.io.InputStreamReader
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import scala.collection.JavaConverters._
+import scala.language.existentials
 import com.giyeok.passzero.StorageSessionManager
+import com.giyeok.passzero.storage.Path
 import com.giyeok.passzero.storage.StorageProfile
 import com.giyeok.passzero.storage.StorageProfileSpec
 import com.giyeok.passzero.utils.ByteArrayUtil._
 import com.giyeok.passzero.utils.ByteBuf
 import com.giyeok.passzero.utils.ByteReader
-import com.giyeok.passzero.utils.BytesInputStream
 import com.giyeok.passzero.utils.BytesOutputStream
 import com.google.api.client.auth.oauth2.Credential
 import com.google.api.client.auth.oauth2.StoredCredential
@@ -28,8 +30,6 @@ import com.google.api.services.drive.DriveScopes
 import org.json4s.DefaultFormats
 import org.json4s._
 import org.json4s.native.JsonMethods._
-import scala.language.existentials
-import com.giyeok.passzero.storage.Path
 
 object GoogleDriveStorageProfile extends StorageProfileSpec {
     implicit val formats = DefaultFormats
@@ -69,7 +69,7 @@ object GoogleDriveStorageProfile extends StorageProfileSpec {
 
                 val valueLength = reader.readInt()
                 val valueBytes = reader.readBytes(valueLength)
-                val valueIs = new ObjectInputStream(new BytesInputStream(valueBytes))
+                val valueIs = new ObjectInputStream(new ByteArrayInputStream(valueBytes))
                 val value: java.io.Serializable = valueIs.readObject().asInstanceOf[java.io.Serializable]
 
                 if (valueIs.read() >= 0) {
@@ -189,7 +189,7 @@ class GoogleDriveStorageProfile(
     private lazy val scopes = Seq(DriveScopes.DRIVE_FILE).asJava
 
     def authorize(): Credential = {
-        val in = new BytesInputStream(compact(render(clientSecret)).toBytes)
+        val in = new ByteArrayInputStream(compact(render(clientSecret)).toBytes)
         val clientSecrets = GoogleClientSecrets.load(jsonFactory, new InputStreamReader(in))
 
         val flow =

@@ -30,11 +30,13 @@ object FutureStream {
         }
         def foreach(func: (T, FutureStream[T]) => Unit): Unit = {
             future foreach { p =>
-                func(p._1, p._2)
-                p._2 foreach func
+                val (value, next) = p
+                func(value, next)
+                next foreach func
             }
         }
     }
+
     case object Nil extends FutureStream[Nothing] {
         val isEmpty: Boolean = true
 

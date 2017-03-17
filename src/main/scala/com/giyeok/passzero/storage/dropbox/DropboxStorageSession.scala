@@ -1,9 +1,11 @@
 package com.giyeok.passzero.storage.dropbox
 
+import java.io.ByteArrayInputStream
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 import scala.util.Failure
+import scala.util.Success
 import scala.util.Try
 import com.dropbox.core.DbxRequestConfig
 import com.dropbox.core.v2.DbxClientV2
@@ -12,74 +14,112 @@ import com.dropbox.core.v2.files.FolderMetadata
 import com.dropbox.core.v2.files.GetMetadataErrorException
 import com.dropbox.core.v2.files.ListFolderResult
 import com.dropbox.core.v2.files.Metadata
+import com.dropbox.core.v2.files.WriteMode
 import com.giyeok.passzero.storage.Entity
 import com.giyeok.passzero.storage.EntityMeta
 import com.giyeok.passzero.storage.EntityType
 import com.giyeok.passzero.storage.Path
 import com.giyeok.passzero.storage.StorageSession
-import com.giyeok.passzero.utils.BytesInputStream
 import com.giyeok.passzero.utils.BytesOutputStream
 import com.giyeok.passzero.utils.FutureStream
 
 class DropboxStorageSession(val profile: DropboxStorageProfile) extends StorageSession {
     private val config = DbxRequestConfig.newBuilder(profile.appName).build()
-    private val client = new DbxClientV2(config, profile.accessToken)
+    private val _client = new DbxClientV2(config, profile.accessToken)
+    private val root = Path(profile.rootPath)
+    private lazy val files = _client.files()
 
     private implicit val ec = ExecutionContext.global
 
-    private def metadataToEntityMeta(path: Path, metadata: Metadata): Option[EntityMeta] =
+    private def metadataToEntityMeta(path0: Path, metadata: Metadata): Option[EntityMeta] =
         metadata match {
             case meta: FolderMetadata =>
-                Some(EntityMeta(path / meta.getName, meta.getId, EntityType.Folder, Map()))
+                Some(EntityMeta(path0 / meta.getName, meta.getId, EntityType.Folder, Map()))
             case meta: FileMetadata =>
-                Some(EntityMeta(path / meta.getName, meta.getId, EntityType.File, Map()))
+                Some(EntityMeta(path0 / meta.getName, meta.getId, EntityType.File, Map()))
             case _ =>
                 None
         }
 
-    def list(path: Path): FutureStream[Seq[EntityMeta]] = {
+    def list(path0: Path): FutureStream[Seq[EntityMeta]] = {
+        val path = root / path0
         def handleResult(resultFuture: Future[ListFolderResult]): FutureStream[Seq[EntityMeta]] = {
-            FutureStream.Cons(resultFuture map { result =>
-                val page = result.getEntries.asScala flatMap { metadata => metadataToEntityMeta(path, metadata) }
+            val consFuture: Future[(Seq[EntityMeta], FutureStream[Seq[EntityMeta]])] = resultFuture map { result =>
+                val page = result.getEntries.asScala.toList flatMap { metadata =>
+                    metadataToEntityMeta(path0, metadata)
+                }
                 if (result.getHasMore) {
-                    val nextPageFuture = handleResult(Future { client.files().listFolderContinue(result.getCursor) })
-                    (page, nextPageFuture)
+                    val listFuture = Future {
+                        files.listFolderContinue(result.getCursor)
+                    }
+                    (page, handleResult(listFuture))
                 } else {
                     (page, FutureStream.Nil)
                 }
-            })
+            }
+            FutureStream.Cons(consFuture)
         }
-        handleResult(Future { client.files().listFolder(path.string) })
+        val listFuture = Future {
+            files.listFolder(path.string)
+        }
+        handleResult(listFuture)
     }
 
-    def getMeta(path: Path): Future[Option[EntityMeta]] = Future {
-        Try(client.files().getMetadata(path.string)).toOption flatMap { metadataToEntityMeta(path, _) }
+    def getMeta(path0: Path): Future[Option[EntityMeta]] = Future {
+        val path = root / path0
+        val t = Try(files.getMetadata(path.string))
+        println("getMeta", path.string, t)
+        t.toOption flatMap { metadataToEntityMeta(path0, _) }
     }
 
-    def get(path: Path): Future[Option[Entity[Array[Byte]]]] = Future {
+    def get(path0: Path): Future[Option[Entity[Array[Byte]]]] = Future {
+        val path = root / path0
         Try {
             val os = new BytesOutputStream(100)
-            val downloader = client.files().download(path.string)
+            println("get", path.string)
+            val downloader = files.download(path.string)
             downloader.download(os)
+            println(s"done ${path.string} - ${os.buf.length}")
             Entity(os.finish())
-        }.toOption
+        } match {
+            case Success(result) => Some(result)
+            case Failure(reason) =>
+                reason.printStackTrace()
+                None
+        }
     }
 
-    def putContent(path: Path, content: Array[Byte]): Future[Boolean] = Future {
+    def putContent(path0: Path, content: Array[Byte]): Future[Boolean] = Future {
+        val path = root / path0
         Try {
-            client.files().upload(path.string).uploadAndFinish(new BytesInputStream(content))
-        }.isSuccess
+            println("put", path.string)
+            val uploader = files.uploadBuilder(path.string).withMode(WriteMode.OVERWRITE).start()
+            try {
+                uploader.uploadAndFinish(new ByteArrayInputStream(content))
+            } finally {
+                uploader.close()
+            }
+        } match {
+            case Success(result) => true
+            case Failure(reason) =>
+                reason.printStackTrace()
+                false
+        }
     }
 
-    def delete(path: Path, recursive: Boolean): Future[Boolean] = Future {
-        Try(client.files().delete(path.string)).isSuccess
+    def delete(path0: Path, recursive: Boolean): Future[Boolean] = Future {
+        val path = root / path0
+        Try(files.delete(path.string)).isSuccess
     }
 
-    def mkdir(path: Path, recursive: Boolean): Future[Boolean] = Future {
-        Try(client.files().getMetadata(path.string)) match {
+    def mkdir(path0: Path, recursive: Boolean): Future[Boolean] = Future {
+        val path = root / path0
+        val t = Try(files.getMetadata(path.string))
+        println("mkdir", path.string, t)
+        t match {
             case Failure(_: GetMetadataErrorException) =>
                 // not exists이면
-                client.files().createFolder(path.string)
+                files.createFolder(path.string)
                 true
             case _ => false
         }

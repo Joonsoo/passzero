@@ -7,6 +7,8 @@ class ByteBuf(initialLength: Int) {
     private var _pointer = 0
     private var _array = new Array[Byte](initialLength)
 
+    def length: Int = _pointer
+
     def finish(): Array[Byte] = {
         mutable = false
         if (_pointer != _array.length) {

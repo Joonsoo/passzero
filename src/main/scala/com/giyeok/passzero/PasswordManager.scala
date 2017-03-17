@@ -13,6 +13,7 @@ import com.giyeok.passzero.Password.SheetId
 import com.giyeok.passzero.Password.SheetInfo
 import com.giyeok.passzero.Password.SheetType
 import com.giyeok.passzero.Password.UserConfig
+import com.giyeok.passzero.storage.EntityType
 import com.giyeok.passzero.storage.Path
 import com.giyeok.passzero.utils.FutureStream
 import org.json4s.JsonDSL._
@@ -74,7 +75,7 @@ class PasswordManager(session: Session) {
 
         def directoryList(): FutureStream[Seq[(DirectoryId, DirectoryInfo)]] = {
             session.list(session.rootPath) map1 { page =>
-                val s = page map { meta =>
+                val s = page filter { _.entityType == EntityType.Folder } map { meta =>
                     session.getAsJson(meta.path / "info") map {
                         case Some(entity) =>
                             directoryInfoOf(entity.content) map { info => (DirectoryId(meta.path.name), info) }
@@ -135,7 +136,7 @@ class PasswordManager(session: Session) {
 
         def sheetList(directoryId: DirectoryId): FutureStream[Seq[(SheetId, SheetInfo)]] = {
             session.list(directoryPath(directoryId)) map1 { page =>
-                val s = page map { meta =>
+                val s = page filter { _.entityType == EntityType.Folder } map { meta =>
                     session.getAsJson(meta.path / "info") map {
                         case Some(entity) =>
                             val id = SheetId(directoryId, meta.path.name)

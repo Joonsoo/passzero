@@ -9,6 +9,7 @@ import com.giyeok.passzero.LocalInfo
 import com.giyeok.passzero.LocalSecret
 import com.giyeok.passzero.PasswordUtils
 import com.giyeok.passzero.storage.StorageProfile
+import com.giyeok.passzero.storage.dropbox.DropboxStorageProfile
 import com.giyeok.passzero.storage.googledrive.GoogleDriveStorageProfile
 import com.giyeok.passzero.storage.local.LocalStorageProfile
 import com.giyeok.passzero.ui.Config
@@ -74,6 +75,10 @@ class InitializationUI(val shell: Shell, parent: MainUI, style: Int, config: Con
         (composite, tabItem)
     }
 
+    private val (dropboxProfileTab, _) = tabItem(
+        new DropboxStorageProfileTab(shell, tabFolder, SWT.NONE, config),
+        config.stringRegistry.get("Dropbox")
+    )
     private val (googleStorageProfileTab, _) = tabItem(
         new GoogleDriveStorageProfileTab(shell, tabFolder, SWT.NONE, config),
         config.stringRegistry.get("Google Drive")
@@ -85,8 +90,9 @@ class InitializationUI(val shell: Shell, parent: MainUI, style: Int, config: Con
 
     private def createStorageProfile(): StorageProfile = {
         tabFolder.getSelectionIndex match {
-            case 0 => googleStorageProfileTab.storageProfile()
-            case 1 => localStorageProfileTab.storageProfile()
+            case 0 => dropboxProfileTab.storageProfile()
+            case 1 => googleStorageProfileTab.storageProfile()
+            case 2 => localStorageProfileTab.storageProfile()
         }
     }
 
@@ -155,6 +161,22 @@ class InitializationUI(val shell: Shell, parent: MainUI, style: Int, config: Con
 
         def widgetDefaultSelected(e: SelectionEvent): Unit = {}
     })
+}
+
+class DropboxStorageProfileTab(shell: Shell, parent: TabFolder, style: Int, config: Config) extends Composite(parent, style) {
+    setLayout(new GridLayout(2, false))
+
+    label(this, config.stringRegistry.get("App Name"), leftLabel())
+    private val appNameText = text(this, "passzero", SWT.BORDER, horizontalFill())
+
+    label(this, config.stringRegistry.get("Access Token"), leftLabel())
+    private val accessTokenText = text(this, "", SWT.BORDER, horizontalFill())
+
+    label(this, config.stringRegistry.get("Root Path"), leftLabel())
+    private val rootPathText = text(this, "/passzero", SWT.BORDER, horizontalFill())
+
+    def storageProfile(): DropboxStorageProfile =
+        new DropboxStorageProfile(appNameText.getText, accessTokenText.getText, rootPathText.getText)
 }
 
 class GoogleDriveStorageProfileTab(shell: Shell, parent: TabFolder, style: Int, config: Config) extends Composite(parent, style) {

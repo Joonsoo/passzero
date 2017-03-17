@@ -11,11 +11,11 @@ class Path(val path: Seq[String]) {
     def /(child: String): Path = Path(path :+ child)
     def /(subpath: Path): Path = Path(path ++ subpath.path)
 
-    def string: String = path mkString "/"
+    def string: String = "/" + (path mkString "/")
     override def toString: String = this.string
 }
 
 object Path {
-    def apply(path: String): Path = if (path.isEmpty) Path(Seq()) else Path(path.split('/'))
+    def apply(path: String): Path = if (path.isEmpty) Path(Seq()) else Path(path.split('/') filterNot { _.isEmpty })
     def apply(seq: Seq[String]): Path = new Path(seq)
 }

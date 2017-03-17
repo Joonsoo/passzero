@@ -344,9 +344,11 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
         implicit val ec = ExecutionContext.global
         selectedSheetId match {
             case Some(sheetId) =>
+                val directoryFuture = passwordStore.directory(sheetId.directoryId)
+                val sheetInfoFuture = passwordStore.sheet(sheetId)
                 for {
-                    directoryInfoOpt <- passwordStore.directory(sheetId.directoryId)
-                    sheetInfoOpt <- passwordStore.sheet(sheetId)
+                    directoryInfoOpt <- directoryFuture
+                    sheetInfoOpt <- sheetInfoFuture
                 } yield {
                     (directoryInfoOpt, sheetInfoOpt) match {
                         case (Some(directoryInfo), Some((sheetInfo, detail))) =>
