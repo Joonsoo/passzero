@@ -53,7 +53,9 @@ class InitializationUI(val shell: Shell, parent: MainUI, style: Int, config: Con
     private val passwordConfirm = new Text(this, SWT.PASSWORD | SWT.BORDER)
     passwordConfirm.setLayoutData(horizontalFill(2))
 
-    // TODO 여기의 Secret Key는 EmergencyKitUI에서처럼 secret key 원본값 말고 master password로 암호화된 값으로 표시하자
+    label(this, config.stringRegistry.get("Revision:"), leftLabel())
+    private val revisionText = text(this, System.currentTimeMillis().toString, horizontalFill(2))
+
     label(this, config.stringRegistry.get("Secret Key:"), leftLabel())
     private val secretKeyGenerationCheckBox = button(this, config.stringRegistry.get("New"), SWT.CHECK, leftest())
     private val secretKey = new Text(this, SWT.BORDER)
@@ -123,7 +125,17 @@ class InitializationUI(val shell: Shell, parent: MainUI, style: Int, config: Con
                         throw new Exception("Invalid character in secret key")
                     }
                 }
-            if (password.getText == passwordConfirm.getText()) {
+            val revisionOpt: Option[Long] = {
+                val text = revisionText.getText
+                Try(text.toLong) match {
+                    case Failure(reason) =>
+                        showMessage(config.stringRegistry.get(s"Wrong revision: ${reason.getMessage}"))
+                        None
+                    case Success(value) => Some(value)
+                }
+            }
+
+            if (revisionOpt.isDefined && password.getText == passwordConfirm.getText()) {
                 val passwordText = password.getText
 
                 // TODO 복잡도 검사
@@ -135,7 +147,7 @@ class InitializationUI(val shell: Shell, parent: MainUI, style: Int, config: Con
                             case Success(storageProfile) =>
                                 showMessage(s"Creating local info file to ${config.localInfoFile.getCanonicalPath}; ${System.getProperty("java.home")}")
                                 try {
-                                    val localInfo = new LocalInfo(System.currentTimeMillis(), localSecret, storageProfile)
+                                    val localInfo = new LocalInfo(revisionOpt.get, localSecret, storageProfile)
                                     println(config.localInfoFile.getCanonicalPath)
                                     LocalInfo.save(passwordText, localInfo, config.localInfoFile)
 
