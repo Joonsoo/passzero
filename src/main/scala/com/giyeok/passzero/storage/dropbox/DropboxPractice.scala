@@ -1,12 +1,12 @@
 package com.giyeok.passzero.storage.dropbox
 
+import java.io.ByteArrayInputStream
 import scala.collection.JavaConverters._
 import com.dropbox.core.DbxRequestConfig
 import com.dropbox.core.v2.DbxClientV2
 import com.dropbox.core.v2.files.FileMetadata
 import com.dropbox.core.v2.files.FolderMetadata
 import com.giyeok.passzero.utils.ByteArrayUtil._
-import com.giyeok.passzero.utils.BytesInputStream
 import com.giyeok.passzero.utils.BytesOutputStream
 
 object DropboxPractice {
@@ -22,7 +22,7 @@ object DropboxPractice {
         }
 
         // client.files().createFolder("/passzero/142332/123123")
-        client.files().uploadBuilder("/passzero/142332/123123/abc").uploadAndFinish(new BytesInputStream("Hello!".toBytes))
+        client.files().uploadBuilder("/passzero/142332/123123/abc").uploadAndFinish(new ByteArrayInputStream("Hello!".toBytes))
         val os = new BytesOutputStream(100)
         client.files().download("/passzero/142332/123123/abc").download(os)
         println(os.finish().asString)

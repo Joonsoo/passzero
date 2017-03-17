@@ -44,7 +44,7 @@ object Main {
             session.putString(path, original)
             storageProfile.session.printHexMatrixOfFile(path)
             for {
-                Some(Entity(_, decoded)) <- session.getAsString(path)
+                Some(Entity(decoded)) <- session.getAsString(path)
             } yield {
                 println(s"decoded: $decoded")
                 assert(original == decoded)
