@@ -13,69 +13,68 @@ class LocalInfoDataStore[V <: Serializable](
         factory: DataStoreFactory,
         updatedNotifier: () => Unit
 ) extends DataStore[V] {
-    private val map = new ConcurrentHashMap[String, V]()
-    private var _updated: Boolean = false
-    private def setUpdated(): Unit = {
-        this.synchronized { _updated = true }
+    private val _map = new ConcurrentHashMap[String, V]()
+    def map: Map[String, V] = (_map.entrySet().asScala map { entry => entry.getKey -> entry.getValue }).toMap
+
+    private def updated(): Unit = {
         updatedNotifier()
     }
-    def isUpdated: Boolean = _updated
 
-    initial foreach { kv => map.put(kv._1, kv._2) }
+    initial foreach { kv => _map.put(kv._1, kv._2) }
 
     def getDataStoreFactory: DataStoreFactory = factory
 
     def set(key: String, value: V): DataStore[V] = {
-        map.put(key, value)
-        setUpdated()
+        _map.put(key, value)
+        updated()
         this
     }
 
     def values(): util.Collection[V] = {
-        map.values()
+        _map.values()
     }
 
     def get(key: String): V = {
-        map.get(key)
+        _map.get(key)
     }
 
     def getId: String = id
 
     def clear(): DataStore[V] = {
-        map.clear()
-        setUpdated()
+        _map.clear()
+        updated()
         this
     }
 
     def size(): Int = {
-        map.size()
+        _map.size()
     }
 
     def delete(key: String): DataStore[V] = {
-        map.remove(key)
-        setUpdated()
+        _map.remove(key)
+        updated()
         this
     }
 
     def containsKey(key: String): Boolean = {
-        map.containsKey(key)
+        _map.containsKey(key)
     }
 
     def containsValue(value: V): Boolean = {
-        map.containsValue(value)
+        _map.containsValue(value)
     }
 
     def isEmpty: Boolean = {
-        map.isEmpty
+        _map.isEmpty
     }
 
     def keySet(): util.Set[String] = {
-        map.keySet()
+        _map.keySet()
     }
 
     def printAll(): Unit = {
         println(s"================ $id")
-        map.entrySet().asScala foreach { kv =>
+        _map.entrySet().asScala foreach { kv =>
             println(s"${kv.getKey} -> ${kv.getValue}")
         }
         println("================")

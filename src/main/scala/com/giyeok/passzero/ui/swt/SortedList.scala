@@ -28,7 +28,7 @@ trait SortedListItem {
 
 case class TextSortedListItem[T](data: T, text: String) extends SortedListItem {
     def >(other: SortedListItem): Boolean = other match {
-        case otherItem: TextSortedListItem[_] => text > otherItem.text
+        case otherItem: TextSortedListItem[_] => text.toLowerCase > otherItem.text.toLowerCase
     }
     def dimension(gc: GC): Point = {
         val p = gc.textExtent(text)
@@ -95,7 +95,7 @@ class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, st
         redraw()
     }
 
-    private def addItem(id: I, item: T, needsRedraw: Boolean): Int = {
+    def addItem(id: I, item: T, needsRedraw: Boolean): Int = {
         val index = items.zipWithIndex find { p => p._1._2 > item } map { _._2 } getOrElse items.length
         val (init, tail) = items.splitAt(index)
         val newList: Seq[(I, T)] = init ++ ((id, item) +: tail)
@@ -144,7 +144,7 @@ class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, st
     //        }
     //    }
 
-    def setSource(stream: FutureStream[Seq[(I, T)]]): Unit = {
+    def setSource(stream: FutureStream[Seq[(I, T)]], finishedListener: () => Unit): Unit = {
         clear()
         setProgress(true)
         val currentSourceId = newSourceId()
@@ -154,7 +154,10 @@ class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, st
                     page foreach { p => addItem(p._1, p._2, needsRedraw = false) }
                     allDimension = None // invalidate calculated dimension
                     if (tail.isEmpty) {
-                        display.syncExec(() => { setProgress(false) })
+                        display.syncExec(() => {
+                            setProgress(false)
+                            finishedListener()
+                        })
                     } else {
                         display.syncExec(() => { redraw() })
                     }

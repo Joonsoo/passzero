@@ -94,7 +94,7 @@ class GoogleDriveStorageProfile(
         applicationName: String,
         applicationRoot: String,
         clientSecret: JValue,
-        dataStores: Map[String, Map[String, java.io.Serializable]]
+        initialDataStores: Map[String, Map[String, java.io.Serializable]]
 ) extends StorageProfile with DataStoreFactory {
     val name: String = GoogleDriveStorageProfile.name
 
@@ -152,34 +152,37 @@ class GoogleDriveStorageProfile(
         buf.finish()
     }
 
-    private var _updated: Boolean = false
-    private def setUpdated(): Unit = this.synchronized {
-        dataStoresMap foreach { idMap =>
-            val (id, map) = idMap
-            println(s"** $id")
-            map.printAll()
-        }
-        _updated = true
+    private def dataStoreUpdated(): Unit = this.synchronized {
+        //        dataStoresMap foreach { idMap =>
+        //            val (id, map) = idMap
+        //            println(s"** $id")
+        //            map.printAll()
+        //        }
+        // TODO local info 업데이트해서 저장
+        // TODO 우선은 변경될때마다 저장 - 나중에 필요하면 모아서 저장하게 수정
+        fireUpdated()
     }
-    def isUpdated: Boolean = _updated
+
     private var dataStoresMap: Map[String, LocalInfoDataStore[_ <: java.io.Serializable]] =
-        (dataStores map { idMap =>
+        initialDataStores map { idMap =>
             val (id, map0) = idMap
             val map: Map[String, T forSome { type T <: java.io.Serializable }] = map0
-            val ds = new LocalInfoDataStore[T forSome { type T <: java.io.Serializable }](id, map, this, setUpdated)
+            val ds = new LocalInfoDataStore[T forSome { type T <: java.io.Serializable }](id, map, this, dataStoreUpdated)
             id -> ds
-        }).toMap
+        }
+    private def dataStores: Map[String, Map[String, java.io.Serializable]] =
+        dataStoresMap mapValues { dataStore => dataStore.map }
+
     def getDataStore[V <: io.Serializable](id: String): DataStore[V] = this.synchronized {
         dataStoresMap get id match {
             case Some(ds) => ds.asInstanceOf[DataStore[V]]
             case None =>
-                val ds = new LocalInfoDataStore[V](id, Map(), this, setUpdated)
+                val ds = new LocalInfoDataStore[V](id, Map(), this, dataStoreUpdated)
                 dataStoresMap += id -> ds
                 ds
         }
     }
 
-    // TODO dataStoreFactory 에 의해서 dataStores에 변경사항이 생기면 LocalInfo에 반영해서 저장해야 함
     private lazy val dataStoreFactory: DataStoreFactory = this
     private lazy val jsonFactory = JacksonFactory.getDefaultInstance
     private lazy val httpTransport = GoogleNetHttpTransport.newTrustedTransport()

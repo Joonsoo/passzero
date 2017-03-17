@@ -21,6 +21,8 @@ object Session {
     def load(password: String, localInfoFile: File): Session = {
         val (localInfoFileTimestamp, localInfo) = LocalInfo.load(password, localInfoFile)
 
+        localInfo.storageProfile.addUpdateListener(() => { LocalInfo.save(password, localInfo, localInfoFile) })
+
         val localInfoFileAge = Timestamp.current - localInfoFileTimestamp
         // localInfoFileTimestamp 를 보고 파일이 너무 오래되었으면(60일 이상 지났으면) 새로운 salt와 iv로 업데이트
         // TODO 그런데 이 작업을 여기서 하는게 맞을까?

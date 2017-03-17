@@ -80,6 +80,7 @@ object GoogleDrivePractice {
             .setPageSize(10)
             .setFields("nextPageToken, files(id, name)")
             .execute()
+        // result.getNextPageToken
         result.getFiles.asScala foreach { file =>
             println(s"${file.getName} ${file.getId}")
         }

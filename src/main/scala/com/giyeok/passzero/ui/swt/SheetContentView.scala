@@ -70,20 +70,16 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
 
         val emptyCommands = new Composite(this, SWT.NONE)
 
-        val notEditingCommands = new Composite(this, SWT.NONE)
+        private val notEditingCommands = new Composite(this, SWT.NONE)
         notEditingCommands.setLayout(gridLayoutNoMargin(1, equalWidths = false))
-        val editButton = new Button(notEditingCommands, SWT.NONE)
-        editButton.setText("Edit")
-        editButton.setLayoutData(rightest() and { _.grabExcessHorizontalSpace = true })
+        private val editButton = button(notEditingCommands, config.stringRegistry.get("Edit"), SWT.NONE, rightest() and { _.grabExcessHorizontalSpace = true })
 
-        val editingCommands = new Composite(this, SWT.NONE)
-        editingCommands.setLayout(gridLayoutNoMargin(2, equalWidths = false))
-        val saveButton = new Button(editingCommands, SWT.NONE)
-        saveButton.setText("Save")
-        saveButton.setLayoutData(rightest() and { _.grabExcessHorizontalSpace = true })
-        val cancelButton = new Button(editingCommands, SWT.NONE)
-        cancelButton.setText("Cancel")
-        cancelButton.setLayoutData(rightest())
+        private val editingCommands = new Composite(this, SWT.NONE)
+        editingCommands.setBackground(SheetContentView.editableBackgroundColor)
+        editingCommands.setLayout(gridLayoutNoMargin(3, equalWidths = false))
+        private val deleteSheetButton = button(editingCommands, config.stringRegistry.get("Delete Sheet"), SWT.NONE, rightest() and { _.grabExcessHorizontalSpace = true })
+        private val saveButton = button(editingCommands, config.stringRegistry.get("Save"), SWT.NONE, rightest())
+        private val cancelButton = button(editingCommands, config.stringRegistry.get("Cancel"), SWT.NONE, rightest())
 
         emptyCommands.setBackground(SheetContentView.baseBackgroundColor)
         notEditingCommands.setBackground(SheetContentView.baseBackgroundColor)
@@ -94,6 +90,13 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
             override def widgetSelected(e: SelectionEvent): Unit = {
                 currentContent foreach { _.editMode() }
                 setEditing(true)
+            }
+        })
+        deleteSheetButton.addSelectionListener(new SelectionListener {
+            override def widgetDefaultSelected(e: SelectionEvent): Unit = {}
+            override def widgetSelected(e: SelectionEvent): Unit = {
+                // TODO 확인 다이얼로그
+                selectedSheetId foreach { sheetId => passwordUi.removeSheet(sheetId) }
             }
         })
         saveButton.addSelectionListener(new SelectionListener {
@@ -296,6 +299,7 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
         fieldsComposite.setLayoutData(fillAll(2))
 
         def editMode(): Unit = {
+            sheetName.setFocus()
             directoryName.setEditable(true)
             directoryName.setBackground(SheetContentView.editableBackgroundColor)
             sheetName.setEditable(true)

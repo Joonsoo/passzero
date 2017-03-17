@@ -12,6 +12,7 @@ import com.giyeok.passzero.Password.SheetDetail
 import com.giyeok.passzero.Password.SheetId
 import com.giyeok.passzero.Password.SheetInfo
 import com.giyeok.passzero.Password.SheetType
+import com.giyeok.passzero.Password.UserConfig
 import com.giyeok.passzero.storage.Path
 import com.giyeok.passzero.utils.FutureStream
 import org.json4s.JsonDSL._
@@ -27,6 +28,27 @@ class PasswordManager(session: Session) {
 
     def newId(): String =
         s"${System.currentTimeMillis()}_${Math.abs(Random.nextLong())}"
+
+    object userConfig {
+        val configPath: Path = session.rootPath / "config"
+
+        def jsonOf(config: UserConfig): JObject =
+            "defaultDirectory" -> (config.defaultDirectory map { _.id })
+
+        def get(): Future[Option[UserConfig]] =
+            session.getAsJson(configPath) map {
+                case Some(entity) =>
+                    val defaultDirectory = entity.content \ "defaultDirectory" match {
+                        case JString(directoryId) => Some(DirectoryId(directoryId))
+                        case _ => None
+                    }
+                    Some(UserConfig(defaultDirectory))
+                case None => None
+            }
+
+        def put(config: UserConfig): Future[Boolean] =
+            session.putJson(configPath, jsonOf(config))
+    }
 
     object directory {
         def infoJsonOf(directoryInfo: DirectoryInfo): JValue =
@@ -215,6 +237,8 @@ object Password {
         def of(name: String): KeyType.Value = reverse(name)
         def unapply(name: String): Option[KeyType.Value] = reverse get name
     }
+
+    case class UserConfig(defaultDirectory: Option[DirectoryId])
 
     case class DirectoryId(id: String)
     case class DirectoryInfo(name: String)
