@@ -9,6 +9,9 @@ lazy val root = (project in file(".")).
 
 libraryDependencies += "org.json4s" %% "json4s-native" % "3.5.0"
 
+// https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core
+libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.8.7"
+
 // swt
 oneswtVersion in oneswtAssembly := "4.6.2"
 libraryDependencies += sbtoneswt.OneSwtPlugin.archDependentSwt.value
