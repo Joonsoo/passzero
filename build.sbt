@@ -42,3 +42,10 @@ javacOptions in compile ++= Seq("-encoding", "UTF-8")
 mainClass in assembly := Some("com.giyeok.passzero.ui.MainUI")
 
 // javaOptions in run += "-agentlib:hprof=cpu=samples"
+
+assemblyMergeStrategy in assembly := {
+    case PathList("com", "fasterxml", "jackson", "core", _@_*) => MergeStrategy.last
+    case x =>
+        val oldStrategy = (assemblyMergeStrategy in assembly).value
+        oldStrategy(x)
+}
