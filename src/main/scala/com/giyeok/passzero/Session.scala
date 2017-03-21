@@ -7,6 +7,7 @@ import scala.concurrent.duration._
 import com.giyeok.passzero.Security.AES256CBC
 import com.giyeok.passzero.Security.InitVec
 import com.giyeok.passzero.Security.PasswordHash
+import com.giyeok.passzero.storage.CachedStorageSession
 import com.giyeok.passzero.storage.Entity
 import com.giyeok.passzero.storage.EntityMeta
 import com.giyeok.passzero.storage.Path
@@ -56,7 +57,8 @@ class Session(revision: Long, password: String, localKeys: LocalSecret, storageS
     }
 
     // TODO StorageSession에서 필요에 의해 session의 storage가 변경되어야 할 수도 있다
-    private def storage: StorageSession = storageSessionManager.storageSession()
+    private def _storage: StorageSession = storageSessionManager.storageSession()
+    private lazy val storage = new CachedStorageSession(_storage)
 
     def localInfo: LocalInfo = new LocalInfo(revision, localKeys, storage.profile)
 

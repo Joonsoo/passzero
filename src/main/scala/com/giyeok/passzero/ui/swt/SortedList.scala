@@ -77,7 +77,13 @@ class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, st
     private var _progress: Boolean = false
     def setProgress(progress: Boolean): Unit = {
         _progress = progress
-        redraw()
+        redrawIfNotDisposed()
+    }
+
+    def redrawIfNotDisposed(): Unit = {
+        if (!this.isDisposed) {
+            redraw()
+        }
     }
 
     private val _scroll: Point = new Point(0, 0)
@@ -92,7 +98,7 @@ class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, st
         idToIndex = Map()
         idToItem = Map()
         allDimension = None
-        redraw()
+        redrawIfNotDisposed()
     }
 
     def addItem(id: I, item: T, needsRedraw: Boolean): Int = {
@@ -104,7 +110,7 @@ class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, st
         idToItem += (id -> item)
         if (needsRedraw) {
             allDimension = None
-            redraw()
+            redrawIfNotDisposed()
         }
         index
     }
@@ -117,7 +123,7 @@ class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, st
     //        items = (items take idx) ++ (items drop (idx + 1))
     //        if (needsRedraw) {
     //            allDimension = None
-    //            redraw()
+    //            redrawIfNotDisposed()
     //        }
     //    }
 
@@ -132,7 +138,7 @@ class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, st
     //        }
     //        allDimension = None
     //        showSelected = true
-    //        redraw()
+    //        redrawIfNotDisposed()
     //    }
 
     //    def replaceItem(id: String, newItem: T): Unit = {
@@ -159,7 +165,7 @@ class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, st
                             finishedListener()
                         })
                     } else {
-                        display.syncExec(() => { redraw() })
+                        display.syncExec(() => { redrawIfNotDisposed() })
                     }
                 } else {
                     // tail.cancel()
@@ -176,7 +182,7 @@ class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, st
         _selectedId = id
         _listeners foreach { f => f(id map { i => (i, idToItem(i)) }, pointOpt) }
         showSelected = true
-        display.asyncExec(() => redraw())
+        display.asyncExec(() => redrawIfNotDisposed())
     }
 
     addPaintListener(new PaintListener {
@@ -266,7 +272,7 @@ class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, st
     addMouseWheelListener(new MouseWheelListener {
         override def mouseScrolled(e: MouseEvent): Unit = {
             _scroll.y -= e.count * 5
-            redraw()
+            redrawIfNotDisposed()
         }
     })
 
@@ -307,7 +313,7 @@ class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, st
     private def allRedraw(): Unit = {
         allDimension = None
         itemBoundsMap = Map()
-        redraw()
+        redrawIfNotDisposed()
     }
 
     def refreshAllItems(): Unit = {
@@ -319,10 +325,10 @@ class SortedList[I, T <: SortedListItem](display: Display, parent: Composite, st
 
         setProgress(true)
         allRedraw()
-        val futures = oldItems map { _._1 } map { id =>
-            val future = source(id)
+        val futures = oldItems map { x => (x._1, source(x._1)) } map { pair =>
+            val (id, future) = pair
             future foreach { item =>
-                display.syncExec(() => addItem(id, item, needsRedraw = true))
+                display.asyncExec(() => addItem(id, item, needsRedraw = true))
             }
             future
         }

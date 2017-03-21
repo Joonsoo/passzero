@@ -131,17 +131,19 @@ class SheetContentView(config: Config, parent: Composite, style: Int, passwordUi
         def cancel(): Unit
     }
     def replaceContent(newContentFunc: () => Control): Unit = {
-        val oldChildren = content.getChildren
-        val newContent = newContentFunc()
-        currentContent = newContent match {
-            case ec: EditableContent => Some(ec)
-            case _ => None
+        if (!this.isDisposed && !content.isDisposed) {
+            val oldChildren = content.getChildren
+            val newContent = newContentFunc()
+            currentContent = newContent match {
+                case ec: EditableContent => Some(ec)
+                case _ => None
+            }
+            setEditing(false)
+            content.setContent(newContent)
+            content.setMinSize(newContent.computeSize(SWT.DEFAULT, SWT.DEFAULT))
+            oldChildren foreach { _.dispose() }
+            requestLayout()
         }
-        setEditing(false)
-        content.setContent(newContent)
-        content.setMinSize(newContent.computeSize(SWT.DEFAULT, SWT.DEFAULT))
-        oldChildren foreach { _.dispose() }
-        requestLayout()
     }
 
     private class EmptyContent() extends Composite(content, SWT.NONE) {

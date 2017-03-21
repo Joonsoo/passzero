@@ -1,10 +1,11 @@
 package com.giyeok.passzero.storage
 
-class Path(val path: Seq[String]) {
+case class Path(path: Seq[String]) {
     assert(path forall { s => !s.contains('/') })
     assert(path forall { s => s != "." && s != ".." })
 
     def isRoot: Boolean = path.isEmpty
+    def parent: Option[Path] = if (isRoot) None else Some(Path(path.init))
 
     def name: String = path.last
 
@@ -17,5 +18,4 @@ class Path(val path: Seq[String]) {
 
 object Path {
     def apply(path: String): Path = if (path.isEmpty) Path(Seq()) else Path(path.split('/') filterNot { _.isEmpty })
-    def apply(seq: Seq[String]): Path = new Path(seq)
 }

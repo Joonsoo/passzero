@@ -152,22 +152,28 @@ class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Sess
             case Success(_) =>
                 passwordMgr.userConfig.get() onComplete {
                     case Success(configOpt) =>
-                        getDisplay.syncExec(() => {
-                            directoryList.setSource(passwordMgr.directory.directoryList() map { directories =>
-                                directories map { p => (p._1, directoryListItem(p._1, p._2)) }
-                            }, () => {
-                                configOpt foreach { config =>
-                                    directoryList.select(config.defaultDirectory, None)
-                                }
+                        if (!this.isDisposed) {
+                            getDisplay.syncExec(() => {
+                                directoryList.setSource(passwordMgr.directory.directoryList() map { directories =>
+                                    directories map { p => (p._1, directoryListItem(p._1, p._2)) }
+                                }, () => {
+                                    configOpt foreach { config =>
+                                        directoryList.select(config.defaultDirectory, None)
+                                    }
+                                })
                             })
-                        })
+                        }
                     case Failure(reason) =>
                         reason.printStackTrace()
-                        getDisplay.syncExec(() => showMessage(reason.getMessage))
+                        if (!this.isDisposed) {
+                            getDisplay.syncExec(() => showMessage(reason.getMessage))
+                        }
                 }
             case Failure(reason) =>
                 reason.printStackTrace()
-                getDisplay.syncExec(() => showMessage(reason.getMessage))
+                if (!this.isDisposed) {
+                    getDisplay.syncExec(() => showMessage(reason.getMessage))
+                }
         }
     }
     start()

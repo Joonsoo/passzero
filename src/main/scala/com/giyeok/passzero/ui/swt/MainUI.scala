@@ -3,14 +3,13 @@ package com.giyeok.passzero.ui.swt
 import com.giyeok.passzero.LocalInfo
 import com.giyeok.passzero.Session
 import com.giyeok.passzero.ui.Config
+import com.giyeok.passzero.ui.SWTUI
 import org.eclipse.swt.SWT
 import org.eclipse.swt.custom.StackLayout
-import org.eclipse.swt.layout.FillLayout
-import org.eclipse.swt.widgets.Canvas
 import org.eclipse.swt.widgets.Composite
 import org.eclipse.swt.widgets.Control
 
-class MainUI(parent: Composite, style: Int, config: Config) extends Composite(parent, style) {
+class MainUI(ui: SWTUI, parent: Composite, style: Int, config: Config) extends Composite(parent, style) {
     // 1. localInfo 파일이 있는지 확인한다
     // 2. 없으면 계정 설정 화면으로 간다. 계정 설정이 완료되면 비밀번호 입력 화면으로 간다
     // 3. 있으면 비밀번호 입력 화면으로 간다
@@ -53,14 +52,21 @@ class MainUI(parent: Composite, style: Int, config: Config) extends Composite(pa
     }
 
     def sessionInitialized(session: Session): Unit = {
-        replaceTo(new PasswordListUI(getShell, _, SWT.NONE, session, config))
+        ui.initSession(session)
     }
 
     def init(): Unit = {
-        if (!config.localInfoFile.exists()) {
-            replaceTo(new InitializationUI(getShell, _, SWT.NONE, config))
-        } else {
-            replaceTo(new MasterPasswordUI(getShell, _, SWT.NONE, config))
+        if (!this.isDisposed) {
+            ui.session match {
+                case Some(session) =>
+                    replaceTo(new PasswordListUI(getShell, _, SWT.NONE, session, config))
+                case None =>
+                    if (!config.localInfoFile.exists()) {
+                        replaceTo(new InitializationUI(getShell, _, SWT.NONE, config))
+                    } else {
+                        replaceTo(new MasterPasswordUI(getShell, _, SWT.NONE, config))
+                    }
+            }
         }
     }
 
