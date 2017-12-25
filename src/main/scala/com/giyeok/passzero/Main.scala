@@ -1,11 +1,10 @@
 package com.giyeok.passzero
 
-import scala.concurrent.ExecutionContext
-import com.giyeok.passzero.storage.Entity
-import com.giyeok.passzero.storage.Path
-import com.giyeok.passzero.utils.ByteArrayUtil._
+import com.giyeok.passzero.storage.{Entity, Path}
 import com.giyeok.passzero.storage.memory.MemoryStorageProfile
-import com.giyeok.passzero.storage.memory.MemoryStorageSession
+import com.giyeok.passzero.utils.ByteArrayUtil._
+
+import scala.concurrent.ExecutionContext
 
 object Main {
     private implicit val ec = ExecutionContext.global

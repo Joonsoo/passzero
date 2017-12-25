@@ -11,6 +11,7 @@
         <encoding>UTF-8</encoding>
         <scala.version>2.12.4</scala.version>
         <scala.compat.version>2.12</scala.compat.version>
+        <main.class>com.giyeok.passzero.ui.javafx.JavaFxUI</main.class>
     </properties>
 
     <dependencies>
@@ -106,6 +107,19 @@
         <sourceDirectory>${project.basedir}/src/main/scala</sourceDirectory>
         <testSourceDirectory>${project.basedir}/src/test/scala</testSourceDirectory>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>     
+                        <manifest>               
+                            <addClasspath>true</addClasspath>          
+                            <classpathPrefix>libs/</classpathPrefix>
+                            <mainClass>${main.class}</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
