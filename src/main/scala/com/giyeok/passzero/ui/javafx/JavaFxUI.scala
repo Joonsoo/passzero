@@ -2,17 +2,27 @@ package com.giyeok.passzero.ui.javafx
 
 import java.io.File
 import javafx.application.{Application, Platform}
-import javafx.scene.Scene
+import javafx.scene.{Parent, Scene}
 import javafx.scene.control.Alert.AlertType
 import javafx.scene.control.{Alert, Button, Label}
 import javafx.scene.layout.StackPane
+import javafx.scene.shape.Rectangle
 import javafx.stage.Stage
 import javax.imageio.ImageIO
 
 import com.giyeok.passzero.Session
+import com.giyeok.passzero.ui.javafx.JavaFxUI.View
 import com.giyeok.passzero.ui.{Config, StringRegistry}
 
 class JavaFxUI extends Application {
+    // 1. localInfo 파일이 있는지 확인한다
+    // 2. 없으면 계정 설정 화면으로 간다. 계정 설정이 완료되면 비밀번호 입력 화면으로 간다
+    // 3. 있으면 비밀번호 입력 화면으로 간다
+    // 4. 비밀번호가 입력되면 localInfo를 로드한다. 로드하는 도중 오류가 발생하면 다시 반복한다.
+    //    별도로 비밀번호가 틀린 것을 검증할 방법은 없고 localInfo 로드가 실패하면 비밀번호가 틀렸거나 localInfo 파일이 손상된 것으로 본다
+    // 5. localInfo 로드가 완료되면 session을 생성해서 비밀번호 목록 화면으로 간다.
+    // 6. system tray에도 아이콘을 표시하고, 트레이 아이콘을 누르면 UI가 화면에 나온다
+
     // JavaFX에서 이 클래스 객체를 직접 만들어서 실행하는 방법을 못 찾겠어서 우선 하드코딩
     val config: Config = Config(new StringRegistry {}, new File("./localInfo.p0"))
 
@@ -110,27 +120,23 @@ class JavaFxUI extends Application {
     //    private var mainUi = Option.empty[MainUI]
     //    private var lastPosition = Option.empty[Rectangle]
     //
-    def startMainUI(primaryStage: Stage): Unit = {
+    val rootStackPane = new StackPane()
+
+    def switchUi(view: View): Unit = {
+        val root = view.viewRoot()
+        rootStackPane.getChildren.clear()
+        rootStackPane.getChildren.add(root)
+    }
+
+    def startMainUi(primaryStage: Stage): Unit = {
         primaryStage.setTitle("Passzero")
 
-        // TODO
-        val btn = new Button()
-        btn.setText("Hello")
-
-        val label = new Label()
-        label.setText("Bye~")
-
-        val root = new StackPane()
-        root.getChildren.add(btn)
-
-        btn.setOnAction { _ =>
-            root.getChildren.clear()
-            root.getChildren.add(label)
-        }
-
-        primaryStage.setScene(new Scene(root, 500, 320))
+        primaryStage.setScene(new Scene(rootStackPane, 500, 320))
         primaryStage.setX(100)
         primaryStage.setY(80)
+
+        // TODO localInfo.p0 파일이 있으면(없으면 InitUI)
+        switchUi(new MasterPasswordUi(this))
 
         showPrimaryStage()
     }
@@ -186,12 +192,17 @@ class JavaFxUI extends Application {
         this.primaryStage = primaryStage
         Platform.setImplicitExit(false)
         if (initTrayIcon()) {
-            startMainUI(primaryStage)
+            startMainUi(primaryStage)
         }
     }
 }
 
 object JavaFxUI {
+
+    trait View {
+        def viewRoot(): Parent
+    }
+
     def main(args: Array[String]): Unit = {
         Application.launch(classOf[JavaFxUI], args: _*)
         System.exit(0)
