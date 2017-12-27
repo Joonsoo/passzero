@@ -122,24 +122,30 @@ class JavaFxUI extends Application {
     //
     val rootStackPane = new StackPane()
 
-    def switchUi(view: View): Unit = {
+    def switchUi(view: View, lockedTrayIcon: Boolean): Unit = {
         val root = view.viewRoot()
         rootStackPane.getChildren.clear()
         rootStackPane.getChildren.add(root)
+
+        if (lockedTrayIcon) {
+            trayIcon.setImage(lockedIcon)
+        } else {
+            trayIcon.setImage(unlockedIcon)
+        }
     }
 
     def startMainUi(primaryStage: Stage): Unit = {
         primaryStage.setTitle("Passzero")
 
-        primaryStage.setScene(new Scene(rootStackPane, 500, 320))
+        primaryStage.setScene(new Scene(rootStackPane, 600, 480))
         primaryStage.setX(100)
         primaryStage.setY(80)
 
         // localInfo.p0 파일이 있으면 비밀번호 입력 화면으로, 없으면 초기 설정 화면으로
         if (config.localInfoFile.isFile) {
-            switchUi(new MasterPasswordUi(this))
+            switchUi(new MasterPasswordUi(this), lockedTrayIcon = true)
         } else {
-            ???
+            switchUi(new InitializationUi(this), lockedTrayIcon = true)
         }
 
         showPrimaryStage()
@@ -198,6 +204,12 @@ class JavaFxUI extends Application {
         if (initTrayIcon()) {
             startMainUi(primaryStage)
         }
+    }
+
+    def showMessage(message: String, alertType: AlertType): Unit = {
+        val alert = new Alert(alertType)
+        alert.setContentText(message)
+        alert.showAndWait()
     }
 }
 

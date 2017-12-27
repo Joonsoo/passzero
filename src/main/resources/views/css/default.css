@@ -1,7 +1,30 @@
-.button-raised {
-    -fx-padding: 0.7em 0.57em;
+.button-default {
+    -fx-padding: 0.2em 0.15em;
+    -fx-start-margin: 0.1em;
+    -fx-end-margin: 0.1em;
     -fx-font-size: 14px;
-    -jfx-button-type: RAISED;
+    -jfx-button-type: FLAT;
+    -fx-background-color: WHITE;
+    -fx-border-color: #ccc;
+    -fx-text-fill: rgb(51, 51, 51);
+}
+
+.button-primary {
+    -fx-padding: 0.2em 0.15em;
+    -fx-start-margin: 0.1em;
+    -fx-end-margin: 0.1em;
+    -fx-font-size: 14px;
+    -jfx-button-type: FLAT;
     -fx-background-color: rgb(77, 102, 204);
+    -fx-text-fill: WHITE;
+}
+
+.button-warn {
+    -fx-padding: 0.2em 0.15em;
+    -fx-start-margin: 0.1em;
+    -fx-end-margin: 0.1em;
+    -fx-font-size: 14px;
+    -jfx-button-type: FLAT;
+    -fx-background-color: #d9534f;
     -fx-text-fill: WHITE;
 }

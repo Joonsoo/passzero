@@ -66,8 +66,7 @@ class MasterPasswordUi(mainUi: JavaFxUI) extends JavaFxUI.View {
                 loadResult match {
                     case Success(session) =>
                         // showMessage(s"Successfully loaded local info to ${config.localInfoFile.getCanonicalPath}")
-                        // TODO
-                        println(session)
+                        mainUi.switchUi(new PasswordListUi(mainUi, session), lockedTrayIcon = false)
                     case Failure(exception) =>
                         // TODO Illegal Key Size는 특별 처리(설치 방법 안내)
                         val message = exception match {
@@ -81,17 +80,11 @@ class MasterPasswordUi(mainUi: JavaFxUI) extends JavaFxUI.View {
                                 // showMessage(s"${throwable.getMessage}; ${System.getProperty("java.home")}")
                                 s"Error while loading. Check your password again\n${throwable.getMessage}\n${System.getProperty("java.home")}"
                         }
-                        showMessage(message)
+                        mainUi.showMessage(message, AlertType.ERROR)
                         setEnabledAll(true)
                         controller.passwordField.requestFocus()
                 }
             }
         }
-    }
-
-    def showMessage(message: String): Unit = {
-        val alert = new Alert(AlertType.ERROR)
-        alert.setContentText(message)
-        alert.showAndWait()
     }
 }

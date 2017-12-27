@@ -241,10 +241,14 @@ object Password {
 
     case class UserConfig(defaultDirectory: Option[DirectoryId])
 
-    case class DirectoryId(id: String)
+    case class DirectoryId(id: String) {
+        def timestamp: Long = id.split('_')(0).toLong
+    }
     case class DirectoryInfo(name: String)
 
-    case class SheetId(directoryId: DirectoryId, id: String)
+    case class SheetId(directoryId: DirectoryId, id: String) {
+        def timestamp: Long = id.split('_')(0).toLong
+    }
     case class SheetInfo(name: String, sheetType: SheetType.Value)
 
     case class Field(key: KeyType.Value, value: String)
