@@ -135,8 +135,12 @@ class JavaFxUI extends Application {
         primaryStage.setX(100)
         primaryStage.setY(80)
 
-        // TODO localInfo.p0 파일이 있으면(없으면 InitUI)
-        switchUi(new MasterPasswordUi(this))
+        // localInfo.p0 파일이 있으면 비밀번호 입력 화면으로, 없으면 초기 설정 화면으로
+        if (config.localInfoFile.isFile) {
+            switchUi(new MasterPasswordUi(this))
+        } else {
+            ???
+        }
 
         showPrimaryStage()
     }

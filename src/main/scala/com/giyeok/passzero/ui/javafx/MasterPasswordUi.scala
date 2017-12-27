@@ -4,12 +4,11 @@ import javafx.application.Platform
 import javafx.fxml.{FXML, FXMLLoader}
 import javafx.scene.Parent
 import javafx.scene.control.Alert.AlertType
-import javafx.scene.control.{Alert, Label}
+import javafx.scene.control.{Alert, Button, Label, PasswordField}
 import javafx.scene.input.KeyCode
 import javafx.scene.layout.Pane
 
 import com.giyeok.passzero.Session
-import com.jfoenix.controls.{JFXButton, JFXPasswordField}
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
@@ -18,11 +17,11 @@ class MasterPasswordController {
     @FXML
     var passwordLengthLabel: Label = _
     @FXML
-    var passwordField: JFXPasswordField = _
+    var passwordField: PasswordField = _
     @FXML
     var systemInfoLabel: Label = _
     @FXML
-    var passwordSubmit: JFXButton = _
+    var passwordSubmit: Button = _
 }
 
 class MasterPasswordUi(mainUi: JavaFxUI) extends JavaFxUI.View {
