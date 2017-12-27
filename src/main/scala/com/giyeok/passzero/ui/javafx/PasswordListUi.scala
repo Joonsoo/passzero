@@ -1,8 +1,6 @@
 package com.giyeok.passzero.ui.javafx
 
 import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
-import java.util.{Timer, TimerTask}
-import java.util.concurrent.atomic.AtomicLong
 import javafx.application.Platform
 import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.collections.{FXCollections, ObservableList}
@@ -224,9 +222,9 @@ class PasswordListUi(mainUi: JavaFxUI, session: Session) extends JavaFxUI.View {
             rowNum += 1
         }
 
-        addRow("Directory:", new TextField(directoryInfo.name))
+        addRow("Directory:", new Label(directoryInfo.name))
         addRow("Type:", new Label(SheetType.mapping(sheetInfo.sheetType)))
-        addRow("Sheet:", new TextField(sheetInfo.name))
+        addRow("Sheet:", new Label(sheetInfo.name))
 
         sheetDetail map {_.fields} foreach {
             _ foreach { field =>

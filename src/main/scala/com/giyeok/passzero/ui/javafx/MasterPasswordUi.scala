@@ -4,7 +4,7 @@ import javafx.application.Platform
 import javafx.fxml.{FXML, FXMLLoader}
 import javafx.scene.Parent
 import javafx.scene.control.Alert.AlertType
-import javafx.scene.control.{Alert, Button, Label, PasswordField}
+import javafx.scene.control._
 import javafx.scene.input.KeyCode
 import javafx.scene.layout.Pane
 
@@ -19,7 +19,7 @@ class MasterPasswordController {
     @FXML
     var passwordField: PasswordField = _
     @FXML
-    var systemInfoLabel: Label = _
+    var systemInfoLabel: TextArea = _
     @FXML
     var passwordSubmit: Button = _
 }
