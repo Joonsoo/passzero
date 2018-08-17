@@ -171,6 +171,9 @@ class PasswordManager(session: Session) {
                 case false => None
             }
         }
+
+        def updateSheet(sheetId: SheetId, sheetInfo: SheetInfo): Future[Option[SheetInfo]] =
+            updateSheet(sheetId, sheetInfo.name, sheetInfo.sheetType)
     }
 
     object sheetDetail {
@@ -205,6 +208,9 @@ class PasswordManager(session: Session) {
                 case false => None
             }
         }
+
+        def putSheetDetail(sheetId: SheetId, sheetDetail: SheetDetail): Future[Option[SheetDetail]] =
+            putSheetDetail(sheetId, sheetDetail.fields)
     }
 }
 
@@ -230,7 +236,8 @@ object Password {
             Username -> "username",
             Password -> "password",
             Website -> "website",
-            Note -> "note"
+            Note -> "note",
+            Unknown -> "unknown"
         )
         val reverse: ListMap[String, KeyType.Value] =
             mapping map { x => x._2 -> x._1 }
