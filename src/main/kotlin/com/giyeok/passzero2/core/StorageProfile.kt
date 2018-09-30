@@ -1,6 +1,6 @@
 package com.giyeok.passzero2.core
 
-import com.giyeok.passzero2.core.sessions.DropboxProfile
+import com.giyeok.passzero2.core.storages.DropboxProfile
 
 interface StorageProfile {
     companion object {
@@ -13,9 +13,9 @@ interface StorageProfile {
         }.toMap()
 
         fun fromBytes(bytes: ByteArray): StorageProfile {
-            val separate = bytes.indexOf(0)
-            val storageType = String(bytes.sliceArray(0 until separate))
-            val profileInfo = bytes.sliceArray(separate until bytes.size)
+            val separateAt = bytes.indexOf(0)
+            val storageType = String(bytes.sliceArray(0 until separateAt))
+            val profileInfo = bytes.sliceArray((separateAt + 1) until bytes.size)
 
             val deserializer = supportedStoragesMap[storageType] ?: throw Exception("Unknown deserializer")
             return deserializer(profileInfo)
@@ -27,7 +27,13 @@ interface StorageProfile {
         fun fromBytes(bytes: ByteArray): StorageProfile
     }
 
+    val spec: Loader
+
     fun createSession(): StorageSession
+
+    fun contentEquals(other: StorageProfile): Boolean
+
+    fun toBytes(): ByteArray
 }
 
 interface StorageSession {
