@@ -10,7 +10,7 @@ import com.giyeok.passzero.utils.ByteReader
 object DropboxStorageProfile extends StorageProfileSpec {
     val name: String = "dropbox"
 
-    val deserializer: (Array[Byte]) => DropboxStorageProfile = { array =>
+    val deserializer: Array[Byte] => DropboxStorageProfile = { array =>
         val reader = new ByteReader(array)
 
         val profileVersion = reader.readBytes(2).toSeq

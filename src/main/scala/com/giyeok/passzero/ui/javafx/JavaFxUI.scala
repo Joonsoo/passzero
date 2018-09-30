@@ -1,18 +1,17 @@
 package com.giyeok.passzero.ui.javafx
 
 import java.io.File
-import javafx.application.{Application, Platform}
-import javafx.scene.{Parent, Scene}
-import javafx.scene.control.Alert.AlertType
-import javafx.scene.control.{Alert, Button, Label}
-import javafx.scene.layout.StackPane
-import javafx.scene.shape.Rectangle
-import javafx.stage.Stage
-import javax.imageio.ImageIO
 
 import com.giyeok.passzero.Session
 import com.giyeok.passzero.ui.javafx.JavaFxUI.View
 import com.giyeok.passzero.ui.{Config, StringRegistry}
+import javafx.application.{Application, Platform}
+import javafx.scene.control.Alert
+import javafx.scene.control.Alert.AlertType
+import javafx.scene.layout.StackPane
+import javafx.scene.{Parent, Scene}
+import javafx.stage.Stage
+import javax.imageio.ImageIO
 
 class JavaFxUI extends Application {
     // 1. localInfo 파일이 있는지 확인한다

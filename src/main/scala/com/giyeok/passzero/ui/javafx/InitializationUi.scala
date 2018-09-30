@@ -2,8 +2,6 @@ package com.giyeok.passzero.ui.javafx
 
 import javafx.scene.Parent
 
-import com.giyeok.passzero.ui.javafx.JavaFxUI.View
-
-class InitializationUi(mainUi: JavaFxUI) extends View {
+class InitializationUi(val mainUi: JavaFxUI) extends JavaFxUI.View {
     override def viewRoot(): Parent = ???
 }
