@@ -2,6 +2,8 @@ package com.giyeok.passzero.ui.javafx
 
 import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 
+import com.giyeok.passzero.Password._
+import com.giyeok.passzero.{Password, PasswordManager, Session}
 import javafx.application.Platform
 import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.collections.{FXCollections, ObservableList}
@@ -13,14 +15,12 @@ import javafx.scene.layout._
 import javafx.scene.text.{Font, TextAlignment}
 import javafx.scene.{Node, Parent}
 import javafx.util.{Callback, StringConverter}
-import com.giyeok.passzero.Password._
-import com.giyeok.passzero.{Password, PasswordManager, Session}
+import org.json4s.native.JsonMethods._
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration.{Duration, _}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
-import org.json4s.native.JsonMethods._
 
 case class ListItem[K, V](id: K)(val value: V, val name: String)
 

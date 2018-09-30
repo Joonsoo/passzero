@@ -7,9 +7,8 @@ import com.giyeok.passzero.utils.ByteArrayUtil._
 import scala.concurrent.ExecutionContext
 
 object Main {
-    private implicit val ec = ExecutionContext.global
-
     def main(args: Array[String]): Unit = {
+        implicit val ec = ExecutionContext.global
         val localKeys = LocalSecret.generateRandomLocalInfo()
 
         val password = "starbucks_apple_samsung_television_coffee"
