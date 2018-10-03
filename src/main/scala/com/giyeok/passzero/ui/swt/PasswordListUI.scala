@@ -14,7 +14,7 @@
 //import com.giyeok.passzero.Password.SheetType
 //import com.giyeok.passzero.Password.UserConfig
 //import com.giyeok.passzero.PasswordManager
-//import com.giyeok.passzero.Session
+//import com.giyeok.passzero.SessionSecret
 //import com.giyeok.passzero.ui.Config
 //import com.giyeok.passzero.ui.swt.GridLayoutUtil._
 //import com.giyeok.passzero.ui.swt.WidgetUtil._
@@ -44,11 +44,11 @@
 //    }
 //}
 //
-//class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, session: Session, config: Config)
+//class PasswordListUI(val shell: Shell, parent: MainUI, style: Int, sessionSecret: SessionSecret, config: Config)
 //        extends Composite(parent, style) with MessageBoxUtil {
 //    implicit private val ec = ExecutionContext.global
 //
-//    private val passwordMgr = new PasswordManager(session)
+//    private val passwordMgr = new PasswordManager(sessionSecret)
 //    private val passwordStore = new PasswordStore(passwordMgr)
 //
 //    shell.setText(config.stringRegistry.get("PasswordList"))
@@ -56,7 +56,7 @@
 //
 //    private val refreshAllBtn = button(this, "Refresh All")
 //    private val newDirectoryBtn = button(this, "New Directory")
-//    private val newSheetBtn = button(this, "New Sheet")
+//    private val newSheetBtn = button(this, "New SheetMeta")
 //
 //    private val emergencyKitBtn = button(this, "Emergency Kit", rightest(3))
 //
@@ -87,7 +87,7 @@
 //    newSheetBtn.addSelectionListener(new SelectionListener {
 //        def widgetSelected(e: SelectionEvent): Unit = {
 //            directoryList.selectedId foreach { directoryId =>
-//                passwordMgr.sheet.createSheet(directoryId, config.stringRegistry.get("New Sheet"), SheetType.Login) foreach { newSheetOpt =>
+//                passwordMgr.sheet.createSheet(directoryId, config.stringRegistry.get("New SheetMeta"), SheetType.Login) foreach { newSheetOpt =>
 //                    newSheetOpt foreach { newSheet =>
 //                        getDisplay.syncExec(() => {
 //                            sheetList.addItem(newSheet._1, sheetListItem(newSheet._1, newSheet._2), needsRedraw = true)
@@ -111,7 +111,7 @@
 //
 //    emergencyKitBtn.addSelectionListener(new SelectionListener {
 //        def widgetSelected(e: SelectionEvent): Unit = {
-//            parent.pushEmergencyKit(session.localInfo)
+//            parent.pushEmergencyKit(sessionSecret.localInfo)
 //        }
 //
 //        def widgetDefaultSelected(e: SelectionEvent): Unit = {}
@@ -148,7 +148,7 @@
 //        directoryList.setProgress(true)
 //        sheetList.clear()
 //        sheetView.emptyContent()
-//        session.ensureInitialized() onComplete {
+//        sessionSecret.ensureInitialized() onComplete {
 //            case Success(_) =>
 //                passwordMgr.userConfig.get() onComplete {
 //                    case Success(configOpt) =>

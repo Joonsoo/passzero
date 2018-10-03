@@ -1,6 +1,6 @@
 package com.giyeok.passzero2.ui
 
-import com.giyeok.passzero2.core.Session
+import com.giyeok.passzero2.core.SessionSecret
 import io.reactivex.Single
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
@@ -26,7 +26,7 @@ class MasterPasswordUi(private val main: UiMain) {
     private lateinit var controller: MasterPasswordController
 
     fun viewRoot(): Parent {
-        val loader = FXMLLoader(javaClass.getResource("/views/masterPassword.fxml"))
+        val loader = FXMLLoader(javaClass.getResource("/views/masterPassword2.fxml"))
         view = loader.load()
         controller = loader.getController()
 
@@ -57,9 +57,11 @@ class MasterPasswordUi(private val main: UiMain) {
     private fun tryPassword(passwordText: String) {
         setEnabledAll(false)
 
-        Single.create<Session> { Session.load(passwordText, main.config.localInfoFile) }.subscribe { session, error ->
+        Single.create<SessionSecret> {
+            it.onSuccess(SessionSecret.load(passwordText, main.config.localInfoFile))
+        }.subscribe { sessionSecret, error ->
             if (error == null) {
-                main.initSession(session)
+                main.initSession(sessionSecret)
             } else {
                 val message: String = when (error) {
                     is InvalidKeyException -> {
@@ -78,6 +80,7 @@ class MasterPasswordUi(private val main: UiMain) {
                     }
                 }
                 main.showMessage(Alert.AlertType.ERROR, main.config.s("Error"), message)
+                setEnabledAll(true)
             }
         }
     }

@@ -77,7 +77,7 @@
 //        private val editingCommands = new Composite(this, SWT.NONE)
 //        editingCommands.setBackground(SheetContentView.editableBackgroundColor)
 //        editingCommands.setLayout(gridLayoutNoMargin(3, equalWidths = false))
-//        private val deleteSheetButton = button(editingCommands, config.stringRegistry.get("Delete Sheet"), SWT.NONE, rightest() and { _.grabExcessHorizontalSpace = true })
+//        private val deleteSheetButton = button(editingCommands, config.stringRegistry.get("Delete SheetMeta"), SWT.NONE, rightest() and { _.grabExcessHorizontalSpace = true })
 //        private val saveButton = button(editingCommands, config.stringRegistry.get("Save"), SWT.NONE, rightest())
 //        private val cancelButton = button(editingCommands, config.stringRegistry.get("Cancel"), SWT.NONE, rightest())
 //
@@ -294,7 +294,7 @@
 //        label(this, config.stringRegistry.get("Type:"), leftLabel())
 //        private val sheetType = label(this, config.stringRegistry.get(SheetType.mapping(sheetInfo.sheetType)), horizontalFill())
 //
-//        label(this, config.stringRegistry.get("Sheet:"), leftLabel())
+//        label(this, config.stringRegistry.get("SheetMeta:"), leftLabel())
 //        private val sheetName = text(this, sheetInfo.name, SWT.READ_ONLY, horizontalFill())
 //
 //        private val fieldsComposite = new SheetDetailContent(this, id, detail map { _.fields } getOrElse Seq())

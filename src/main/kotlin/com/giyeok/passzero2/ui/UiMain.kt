@@ -1,6 +1,7 @@
 package com.giyeok.passzero2.ui
 
-import com.giyeok.passzero2.core.Session
+import com.giyeok.passzero2.core.SessionSecret
+import io.reactivex.schedulers.Schedulers
 import javafx.application.Application
 import javafx.application.Platform
 import javafx.scene.Parent
@@ -12,7 +13,7 @@ import java.awt.*
 import java.io.File
 import javax.imageio.ImageIO
 
-class StringRegistry : (String) -> String {
+open class StringRegistry : (String) -> String {
     override fun invoke(key: String): String = get(key)
 
     fun get(key: String): String = key
@@ -20,9 +21,15 @@ class StringRegistry : (String) -> String {
 
 class UiConfig(stringRegistry: StringRegistry, val localInfoFile: File) {
     val s = stringRegistry
+
+    companion object {
+        val default = UiConfig(StringRegistry(), File("./localInfo.p0"))
+    }
 }
 
 class UiMain(val config: UiConfig) : Application() {
+    constructor() : this(UiConfig.default)
+
     private lateinit var primaryStage: Stage
     private lateinit var lockedIcon: Image
     private lateinit var unlockedIcon: Image
@@ -44,7 +51,7 @@ class UiMain(val config: UiConfig) : Application() {
         return if (SystemTray.isSupported()) {
             val tray = SystemTray.getSystemTray()
             this.lockedIcon = ImageIO.read(javaClass.getResource("/locked.png"))
-            this.unlockedIcon = ImageIO.read(javaClass.getResource("/locked.png"))
+            this.unlockedIcon = ImageIO.read(javaClass.getResource("/unlocked.png"))
             this.trayIcon = TrayIcon(lockedIcon)
 
             this.trayIcon.addActionListener { Platform.runLater { this.showPrimaryStage() } }
@@ -52,7 +59,7 @@ class UiMain(val config: UiConfig) : Application() {
             val open = MenuItem(config.s("Open UI"))
             open.addActionListener { Platform.runLater { this.showPrimaryStage() } }
 
-            val closeSession = MenuItem(config.s("Close Session"))
+            val closeSession = MenuItem(config.s("Close SessionSecret"))
             closeSession.addActionListener { Platform.runLater { this.closeSession() } }
 
             val quit = MenuItem(config.s("Quit"))
@@ -76,10 +83,12 @@ class UiMain(val config: UiConfig) : Application() {
     }
 
     fun showMessage(alertType: Alert.AlertType, title: String, text: String) {
-        val alert = Alert(alertType)
-        alert.title = title
-        alert.contentText = text
-        alert.showAndWait()
+        Platform.runLater {
+            val alert = Alert(alertType)
+            alert.title = title
+            alert.contentText = text
+            alert.showAndWait()
+        }
     }
 
     private fun showPrimaryStage() {
@@ -109,8 +118,14 @@ class UiMain(val config: UiConfig) : Application() {
         rootStackPane.children.add(root)
     }
 
-    fun initSession(session: Session): Unit {
-        switchUi(PasswordListUi(this, session).viewRoot(), false)
+    fun initSession(sessionSecret: SessionSecret) {
+        Platform.runLater {
+            val passwordListUi = PasswordListUi(this, sessionSecret, Schedulers.computation())
+            val viewRoot = passwordListUi.viewRoot()
+            passwordListUi.start()
+            this.trayIcon.image = unlockedIcon
+            switchUi(viewRoot, false)
+        }
     }
 
     private fun closeSession() {
@@ -120,7 +135,7 @@ class UiMain(val config: UiConfig) : Application() {
 
 object Main {
     @JvmStatic
-    fun main(args: Array<String>): Unit {
+    fun main(args: Array<String>) {
         Application.launch(UiMain::class.java, *args)
         System.exit(0)
     }

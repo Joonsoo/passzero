@@ -1,18 +1,18 @@
 package com.giyeok.passzero2.core
 
-import com.giyeok.passzero2.core.storages.DropboxProfile
+import com.giyeok.passzero2.sessions.DropboxProfile
 
-interface StorageProfile {
+interface SessionProfile {
     companion object {
-        val supportedStorages: List<StorageProfile.Loader> = listOf(
+        val supportedStorages: List<SessionProfile.Loader> = listOf(
                 DropboxProfile
         )
 
-        val supportedStoragesMap: Map<String, (ByteArray) -> StorageProfile> = supportedStorages.map { s ->
+        val supportedStoragesMap: Map<String, (ByteArray) -> SessionProfile> = supportedStorages.map { s ->
             s.name to s::fromBytes
         }.toMap()
 
-        fun fromBytes(bytes: ByteArray): StorageProfile {
+        fun fromBytes(bytes: ByteArray): SessionProfile {
             val separateAt = bytes.indexOf(0)
             val storageType = String(bytes.sliceArray(0 until separateAt))
             val profileInfo = bytes.sliceArray((separateAt + 1) until bytes.size)
@@ -24,18 +24,14 @@ interface StorageProfile {
 
     interface Loader {
         val name: String
-        fun fromBytes(bytes: ByteArray): StorageProfile
+        fun fromBytes(bytes: ByteArray): SessionProfile
     }
 
-    val spec: Loader
+    val loader: Loader
 
-    fun createSession(): StorageSession
+    fun createSession(root: String, secretKey: ByteArray): Session
 
-    fun contentEquals(other: StorageProfile): Boolean
+    infix fun contentEquals(other: SessionProfile): Boolean
 
     fun toBytes(): ByteArray
-}
-
-interface StorageSession {
-
 }

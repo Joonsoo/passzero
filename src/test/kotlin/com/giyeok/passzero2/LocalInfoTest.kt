@@ -2,8 +2,8 @@ package com.giyeok.passzero2
 
 import com.giyeok.passzero2.core.LocalInfo
 import com.giyeok.passzero2.core.LocalSecret
-import com.giyeok.passzero2.core.StorageProfile
-import com.giyeok.passzero2.core.storages.DropboxProfile
+import com.giyeok.passzero2.core.SessionProfile
+import com.giyeok.passzero2.core.sessions.DropboxProfile
 import java.util.*
 import kotlin.test.Test
 
@@ -32,7 +32,7 @@ class LocalInfoTest {
         }
     }
 
-    fun Random.storageProfile(): StorageProfile =
+    fun Random.storageProfile(): SessionProfile =
             DropboxProfile(this.string(10), this.string(10), this.string(10))
 
     fun Random.bytes(length: Int): ByteArray {

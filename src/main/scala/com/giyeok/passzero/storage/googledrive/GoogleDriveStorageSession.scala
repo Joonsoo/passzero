@@ -12,7 +12,7 @@ import com.giyeok.passzero.utils.FutureStream
 import com.google.api.services.drive.Drive
 
 // 만료되거나 하면 새로 갱신해야 할 것
-// manager를 통해서 Storage session 객체를 변경. dataStore에 저장되는 내용은 StorageProfile에서 알아서 처리
+// manager를 통해서 Storage sessionSecret 객체를 변경. dataStore에 저장되는 내용은 StorageProfile에서 알아서 처리
 class GoogleDriveStorageSession(
         val profile: GoogleDriveStorageProfile,
         applicationRoot: Path,

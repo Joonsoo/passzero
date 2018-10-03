@@ -14,7 +14,7 @@ object StorageProfile {
     }
 }
 
-// StorageProfile 정보는 암호화돼서 LocalInfo와 같은 파일에 저장
+// SessionProfile 정보는 암호화돼서 LocalInfo와 같은 파일에 저장
 // TODO StorageProfile에서 toBytes가 변경될 상황이 생기면 LocalInfo를 새로 저장해야 함
 trait StorageProfile {
     private var updateListeners: List[() => Unit] = List()

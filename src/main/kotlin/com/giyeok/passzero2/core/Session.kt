@@ -1,36 +1,85 @@
 package com.giyeok.passzero2.core
 
-import java.io.File
-import java.time.Duration
+import com.fasterxml.jackson.databind.JsonNode
+import io.reactivex.Completable
+import io.reactivex.Observable
+import io.reactivex.Single
+import java.time.LocalDateTime
+import java.util.*
 
-class Session(private val rootName: String, private val secretKey: ByteArray, private val storageSession: StorageSession) {
-    companion object {
-        private fun xor(a: ByteArray, b: ByteArray): ByteArray {
-            assert(a.size == b.size)
-            val newArray = ByteArray(a.size)
-            for (i in 0 until a.size) {
-                newArray[i] = (a[i].toInt() xor b[i].toInt()).toByte()
-            }
-            return newArray
-        }
 
-        fun calculateSecretKey(localInfo: LocalInfo, password: String): ByteArray {
-            val pwHash = Crypto.PasswordHash.generateHash(localInfo.localSecret.pwSalt, password)
-            return xor(localInfo.localSecret.localKey,
-                    xor(pwHash.sliceArray(0 until 32), pwHash.sliceArray(32 until 64)))
-        }
+interface Session {
+    enum class SheetType(val code: String) {
+        Login("login"), Note("note"), Other("other");
 
-        fun load(passwordText: String, localInfoFile: File): Session {
-            val localInfo = LocalInfo.load(passwordText, localInfoFile)
-
-            if (Duration.ofMillis(System.currentTimeMillis() - localInfo.timestamp) > Duration.ofDays(60)) {
-                // TODO update LocalInfo File
-            }
-
-            return Session(
-                    "${localInfo.revision}",
-                    calculateSecretKey(localInfo, passwordText),
-                    localInfo.storageProfile.createSession())
+        companion object {
+            fun ofCode(code: String): SheetType =
+                    when (code) {
+                        Login.code -> Login
+                        Note.code -> Note
+                        else -> Other
+                    }
         }
     }
+
+    enum class FieldType(val code: String) {
+        Username("username"), Password("password"), Website("website"), Note("note"), Other("other");
+
+        companion object {
+            fun ofCode(code: String): FieldType =
+                    when (code) {
+                        Username.code -> Username
+                        Password.code -> Password
+                        Website.code -> Website
+                        Note.code -> Note
+                        else -> Other
+                    }
+        }
+    }
+
+    data class Sheet(val id: String, val meta: SheetMeta, val detail: SheetDetail)
+
+    /**
+     * @property version: greater version means later version. Usually timestamp
+     */
+    data class SheetMeta(
+            val version: Long,
+            val sheetType: SheetType,
+            val name: String,
+            val tags: List<String>,
+            val createdTime: Date,
+            val modifiedTime: Date) {
+        fun toJson(): JsonNode = TODO()
+    }
+
+    /**
+     * @property version: greater version means later version. Usually timestamp
+     * meta.version and detail.version are totally independent, which means two entities managed independently
+     */
+    data class SheetDetail(val version: Long, val fields: List<SheetField>) {
+        fun toJson(): JsonNode = TODO()
+    }
+
+    data class SheetField(val type: FieldType, val value: String)
+
+    data class SheetCache(val id: String, val meta: SheetMeta, val detail: SheetDetail?)
+
+    data class FirstInfo(
+            val cachedSheets: List<SheetCache>,
+            val cachedTags: List<String>)
+
+    class Dump(val sheets: List<Sheet>)
+
+    fun start(): Completable
+    fun firstInfo(): Single<FirstInfo>
+    fun locate(sheetId: String): Single<String>
+    fun sheetMetas(): Observable<Pair<String, SheetMeta>>
+    fun sheet(sheetId: String): Single<Sheet>
+    fun createSheet(meta: SheetMeta, detail: SheetDetail): Single<Sheet>
+    fun updateSheet(sheetId: String, newMeta: SheetMeta, newDetail: SheetDetail): Single<Sheet>
+    fun deleteSheet(sheetId: String): Completable
+    fun clearAllCaches(): Completable
+    fun clearSheetCache(sheetId: String): Single<Sheet>
+    fun dump(): Single<Dump>
+    fun import(dump: Dump): Observable<Sheet>
 }

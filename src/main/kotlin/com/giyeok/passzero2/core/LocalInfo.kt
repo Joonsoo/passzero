@@ -37,7 +37,7 @@ class LocalInfo(
         val timestamp: Long,
         val revision: Long,
         val localSecret: LocalSecret,
-        val storageProfile: StorageProfile) {
+        val sessionProfile: SessionProfile) {
     // LocalInfo 파일 구조:
     // 첫 4바이트는 매직넘버 GYPZ
     // 그 다음 2바이트는 버젼값. 기본 0001
@@ -78,9 +78,9 @@ class LocalInfo(
         val contentBuf = ByteArrayOutputStream(100)
         val contentStream = DataOutputStream(contentBuf)
         contentStream.write(localSecret.toBytes())
-        contentStream.writeBytes(storageProfile.spec.name)
+        contentStream.writeBytes(sessionProfile.loader.name)
         contentStream.write(0)
-        contentStream.write(storageProfile.toBytes())
+        contentStream.write(sessionProfile.toBytes())
 
         val encodedContent = Crypto.AES256CBC.encode(contentBuf.toByteArray(), localInfoEncodeKey, iv)
         stream.write(encodedContent)
@@ -102,7 +102,7 @@ class LocalInfo(
     infix fun contentEquals(other: LocalInfo): Boolean =
             this.timestamp == other.timestamp && this.revision == other.revision &&
                     this.localSecret.contentEquals(other.localSecret) &&
-                    this.storageProfile.contentEquals(other.storageProfile)
+                    this.sessionProfile.contentEquals(other.sessionProfile)
 
     companion object {
         class DecodeException(msgKey: String) : Exception(msgKey)
@@ -142,9 +142,9 @@ class LocalInfo(
             val localSecretBytes = content.sliceArray(0 until 64)
             val localSecret = LocalSecret.fromBytes(localSecretBytes)
 
-            // 9. Session Profile Info
+            // 9. SessionSecret Profile Info
             val sessionProfileBytes = content.sliceArray(64 until content.size)
-            val sessionProfile = StorageProfile.fromBytes(sessionProfileBytes)
+            val sessionProfile = SessionProfile.fromBytes(sessionProfileBytes)
 
             return LocalInfo(timestamp, revision, localSecret, sessionProfile)
         }

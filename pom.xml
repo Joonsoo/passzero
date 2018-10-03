@@ -51,6 +51,18 @@
             <version>3.5.3</version>
         </dependency>
 
+        <!-- Jackson -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>2.9.5</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.9.5</version>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/io.reactivex.rxjava2/rxkotlin -->
         <dependency>
             <groupId>io.reactivex.rxjava2</groupId>

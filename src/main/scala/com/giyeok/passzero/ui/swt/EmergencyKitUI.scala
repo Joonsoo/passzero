@@ -55,7 +55,7 @@
 //
 //    private val storageInfo = new Text(this, SWT.READ_ONLY | SWT.MULTI | SWT.WRAP)
 //    storageInfo.setLayoutData(horizontalFill())
-//    storageInfo.setText(localInfo.storageProfile.infoText)
+//    storageInfo.setText(localInfo.sessionProfile.infoText)
 //    storageInfo.setFont(largerFont)
 //
 //    label(this, "", fillAll(2))
@@ -156,7 +156,7 @@
 //        // TODO Revision 및 Secret 정보에 대한 QR 코드 추가
 //
 //        addText("Storage:", PDType1Font.HELVETICA, fontSize, 25, 300, 30)
-//        addText(localInfo.storageProfile.infoText, PDType1Font.COURIER, fontSize, 150, 300, fontSize)
+//        addText(localInfo.sessionProfile.infoText, PDType1Font.COURIER, fontSize, 150, 300, fontSize)
 //
 //        addText("Master Password:", PDType1Font.HELVETICA, fontSize, 25, 200, fontSize)
 //

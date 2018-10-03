@@ -197,7 +197,7 @@ class PasswordListUi(mainUi: JavaFxUI, session: Session) extends JavaFxUI.View {
         }
 
         controller.newSheetButton.setOnAction { _ =>
-            passwordManager.sheet.createSheet(controller.directoryComboBox.getSelectionModel.getSelectedItem.id, "New Sheet", SheetType.Login) foreach { newSheetOpt =>
+            passwordManager.sheet.createSheet(controller.directoryComboBox.getSelectionModel.getSelectedItem.id, "New SheetMeta", SheetType.Login) foreach { newSheetOpt =>
                 val newSheet = newSheetOpt.get
                 passwordManager.sheetDetail.putSheetDetail(newSheet._1, Seq()) foreach { newSheetDetailOpt =>
                     val newSheetDetail = newSheetDetailOpt.get
@@ -252,7 +252,7 @@ class PasswordListUi(mainUi: JavaFxUI, session: Session) extends JavaFxUI.View {
 
         addRow("Directory:", new Label(directoryInfo.name))
         addRow("Type:", new Label(SheetType.mapping(sheetInfo.sheetType)))
-        addRow("Sheet:", new Label(sheetInfo.name))
+        addRow("SheetMeta:", new Label(sheetInfo.name))
 
         sheetDetail foreach {
             _.fields.foreach { field =>
@@ -374,7 +374,7 @@ class PasswordListUi(mainUi: JavaFxUI, session: Session) extends JavaFxUI.View {
                 addRow(key("Type:"), new Label(SheetType.mapping(sheetInfo.sheetType)), None)
 
                 sheetName.textProperty().addListener(changeListener[String])
-                addRow(key("Sheet:"), sheetName, None)
+                addRow(key("SheetMeta:"), sheetName, None)
 
                 updateJsonPreview(sheetId, sheetInfo, sheetDetail)
                 vbox.getChildren.addAll(editGrid, newFieldBtn)

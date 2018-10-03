@@ -1,7 +1,7 @@
 //package com.giyeok.passzero.ui.swt
 //
 //import com.giyeok.passzero.LocalInfo
-//import com.giyeok.passzero.Session
+//import com.giyeok.passzero.SessionSecret
 //import com.giyeok.passzero.ui.Config
 //import com.giyeok.passzero.ui.SWTUI
 //import org.eclipse.swt.SWT
@@ -51,15 +51,15 @@
 //        push(new EmergencyKitUI(getShell, _, SWT.NONE, localInfo, config))
 //    }
 //
-//    def sessionInitialized(session: Session): Unit = {
-//        ui.initSession(session)
+//    def sessionInitialized(sessionSecret: SessionSecret): Unit = {
+//        ui.initSession(sessionSecret)
 //    }
 //
 //    def init(): Unit = {
 //        if (!this.isDisposed) {
-//            ui.session match {
-//                case Some(session) =>
-//                    replaceTo(new PasswordListUI(getShell, _, SWT.NONE, session, config))
+//            ui.sessionSecret match {
+//                case Some(sessionSecret) =>
+//                    replaceTo(new PasswordListUI(getShell, _, SWT.NONE, sessionSecret, config))
 //                case None =>
 //                    if (!config.localInfoFile.exists()) {
 //                        replaceTo(new InitializationUI(getShell, _, SWT.NONE, config))
