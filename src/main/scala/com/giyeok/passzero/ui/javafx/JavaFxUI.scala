@@ -58,7 +58,7 @@ class JavaFxUI extends Application {
     //            new MenuItem(menu, SWT.SEPARATOR)
     //
     //            val closeSessionMenuItem = new MenuItem(menu, SWT.PUSH)
-    //            closeSessionMenuItem.setText(config.stringRegistry.get("Close session"))
+    //            closeSessionMenuItem.setText(config.stringRegistry.get("Close sessionSecret"))
     //            closeSessionMenuItem.addSelectionListener(new SelectionListener {
     //                override def widgetDefaultSelected(e: SelectionEvent): Unit = {}
     //                override def widgetSelected(e: SelectionEvent): Unit = {
@@ -172,7 +172,7 @@ class JavaFxUI extends Application {
             val openItem = new MenuItem("Open UI")
             openItem.addActionListener { _ => Platform runLater { () => this.showPrimaryStage() } }
 
-            val closeSessionItem = new MenuItem("Close Session")
+            val closeSessionItem = new MenuItem("Close SessionSecret")
             closeSessionItem.addActionListener { _ => Platform runLater { () => this.showPrimaryStage() } }
 
             val quitItem = new MenuItem("Quit")

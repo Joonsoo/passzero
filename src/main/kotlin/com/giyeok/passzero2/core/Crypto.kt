@@ -1,6 +1,7 @@
 package com.giyeok.passzero2.core
 
 import java.security.SecureRandom
+import java.util.*
 import javax.crypto.Cipher
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.IvParameterSpec
@@ -71,7 +72,25 @@ object Crypto {
         val saltSize = 32
         val algorithm = "PBKDF2WithHmacSHA1"
 
-        data class HashAndSalt(val hash: ByteArray, val salt: ByteArray)
+        data class HashAndSalt(val hash: ByteArray, val salt: ByteArray) {
+            override fun equals(other: Any?): Boolean {
+                if (this === other) return true
+                if (javaClass != other?.javaClass) return false
+
+                other as HashAndSalt
+
+                if (!Arrays.equals(hash, other.hash)) return false
+                if (!Arrays.equals(salt, other.salt)) return false
+
+                return true
+            }
+
+            override fun hashCode(): Int {
+                var result = Arrays.hashCode(hash)
+                result = 31 * result + Arrays.hashCode(salt)
+                return result
+            }
+        }
 
         fun generateHashAndSalt(password: String): HashAndSalt {
             val salt = secureRandom(saltSize)

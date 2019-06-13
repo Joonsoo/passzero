@@ -18,7 +18,7 @@ class LocalSecret(val pwSalt: ByteArray, val localKey: ByteArray) {
     }
 
     fun toReadable(): String = toBase64().chunked(8).joinToString("-")
-    fun isIdentical(other: LocalSecret): Boolean =
+    fun contentEquals(other: LocalSecret): Boolean =
             pwSalt contentEquals other.pwSalt && localKey contentEquals other.localKey
 
     companion object {
@@ -37,8 +37,7 @@ class LocalInfo(
         val timestamp: Long,
         val revision: Long,
         val localSecret: LocalSecret,
-        val storageProfile: StorageProfile,
-        val secretKey: ByteArray) {
+        val sessionProfile: SessionProfile) {
     // LocalInfo 파일 구조:
     // 첫 4바이트는 매직넘버 GYPZ
     // 그 다음 2바이트는 버젼값. 기본 0001
@@ -55,27 +54,58 @@ class LocalInfo(
     //  - 크기는 storageProfileInfo때문에 확정 불가
 
     // encode는 호출될 때마다 내부적으로 random salt와 iv를 생성하기 때문에 같은 인자를 줘도 결과가 항상 다르다
-    fun encode(password: String, localInfo: LocalInfo): ByteArray {
-        TODO()
+    fun encode(password: String): ByteArray {
+        val arrayStream = ByteArrayOutputStream()
+        val stream = DataOutputStream(arrayStream)
+
+        stream.writeByte('G'.toInt())
+        stream.writeByte('Y'.toInt())
+        stream.writeByte('P'.toInt())
+        stream.writeByte('Z'.toInt())
+        stream.writeByte(0)
+        stream.writeByte(1)
+        stream.writeLong(this.timestamp)
+        stream.writeLong(this.revision)
+
+        val (hash, salt) = Crypto.PasswordHash.generateHashAndSalt(password)
+        stream.write(salt)
+
+        val iv = Crypto.AES256CBC.InitVec.generate()
+        stream.write(iv)
+
+        val localInfoEncodeKey = hash.sliceArray(0 until 32)
+
+        val contentBuf = ByteArrayOutputStream(100)
+        val contentStream = DataOutputStream(contentBuf)
+        contentStream.write(localSecret.toBytes())
+        contentStream.writeBytes(sessionProfile.loader.name)
+        contentStream.write(0)
+        contentStream.write(sessionProfile.toBytes())
+
+        val encodedContent = Crypto.AES256CBC.encode(contentBuf.toByteArray(), localInfoEncodeKey, iv)
+        stream.write(encodedContent)
+
+        return arrayStream.toByteArray()
     }
 
-    fun save(password: String, localInfo: LocalInfo, dest: File) {
+    fun save(password: String, dest: File) {
         if (dest.exists() && !dest.isFile) {
             TODO("error")
         }
 
-        val encoded = encode(password, localInfo)
+        val encoded = encode(password)
         FileOutputStream(dest).use { os ->
             os.write(encoded)
         }
     }
 
+    infix fun contentEquals(other: LocalInfo): Boolean =
+            this.timestamp == other.timestamp && this.revision == other.revision &&
+                    this.localSecret.contentEquals(other.localSecret) &&
+                    this.sessionProfile.contentEquals(other.sessionProfile)
+
     companion object {
         class DecodeException(msgKey: String) : Exception(msgKey)
-
-        private fun xor(a: ByteArray, b: ByteArray): ByteArray {
-            TODO()
-        }
 
         fun decode(password: String, encoded: ByteArray): LocalInfo {
             val stream = DataInputStream(ByteArrayInputStream(encoded))
@@ -102,7 +132,7 @@ class LocalInfo(
             val localInfoSalt = stream.readBytesFully(Crypto.PasswordHash.saltSize)
             // 6. Local Info IV
             val localInfoIv = stream.readBytesFully(Crypto.AES256CBC.InitVec.size)
-            val localInfoKey = Crypto.PasswordHash.generateHash(localInfoSalt, password)
+            val localInfoKey = Crypto.PasswordHash.generateHash(localInfoSalt, password).sliceArray(0 until 32)
 
             // 7. Encoded Content
             val encodedContent = stream.readAll()
@@ -112,16 +142,11 @@ class LocalInfo(
             val localSecretBytes = content.sliceArray(0 until 64)
             val localSecret = LocalSecret.fromBytes(localSecretBytes)
 
-            // 9. Session Profile Info
+            // 9. SessionSecret Profile Info
             val sessionProfileBytes = content.sliceArray(64 until content.size)
-            val sessionProfile = StorageProfile.fromBytes(sessionProfileBytes)
+            val sessionProfile = SessionProfile.fromBytes(sessionProfileBytes)
 
-            // 10. Calculate secret key
-            val pwHash = Crypto.PasswordHash.generateHash(localSecret.pwSalt, password)
-            val secretKey = xor(localSecret.localKey,
-                    xor(pwHash.sliceArray(0 until 32), pwHash.sliceArray(32 until 64)))
-
-            return LocalInfo(timestamp, revision, localSecret, sessionProfile, secretKey)
+            return LocalInfo(timestamp, revision, localSecret, sessionProfile)
         }
 
         fun load(password: String, src: File): LocalInfo {

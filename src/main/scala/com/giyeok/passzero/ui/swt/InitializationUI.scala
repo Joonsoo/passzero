@@ -8,7 +8,7 @@
 //import com.giyeok.passzero.LocalInfo
 //import com.giyeok.passzero.LocalSecret
 //import com.giyeok.passzero.PasswordUtils
-//import com.giyeok.passzero.storage.StorageProfile
+//import com.giyeok.passzero.storage.SessionProfile
 //import com.giyeok.passzero.storage.dropbox.DropboxStorageProfile
 //import com.giyeok.passzero.storage.googledrive.GoogleDriveStorageProfile
 //import com.giyeok.passzero.storage.local.LocalStorageProfile
@@ -90,11 +90,11 @@
 //        config.stringRegistry.get("Local Storage")
 //    )
 //
-//    private def createStorageProfile(): StorageProfile = {
+//    private def createStorageProfile(): SessionProfile = {
 //        tabFolder.getSelectionIndex match {
-//            case 0 => dropboxProfileTab.storageProfile()
-//            case 1 => googleStorageProfileTab.storageProfile()
-//            case 2 => localStorageProfileTab.storageProfile()
+//            case 0 => dropboxProfileTab.sessionProfile()
+//            case 1 => googleStorageProfileTab.sessionProfile()
+//            case 2 => localStorageProfileTab.sessionProfile()
 //        }
 //    }
 //
@@ -144,10 +144,10 @@
 //                        showMessage(config.stringRegistry.get(reason))
 //                    case None =>
 //                        Try(createStorageProfile()) match {
-//                            case Success(storageProfile) =>
+//                            case Success(sessionProfile) =>
 //                                showMessage(s"Creating local info file to ${config.localInfoFile.getCanonicalPath}; ${System.getProperty("java.home")}")
 //                                try {
-//                                    val localInfo = new LocalInfo(revisionOpt.get, localSecret, storageProfile)
+//                                    val localInfo = new LocalInfo(revisionOpt.get, localSecret, sessionProfile)
 //                                    println(config.localInfoFile.getCanonicalPath)
 //                                    LocalInfo.save(passwordText, localInfo, config.localInfoFile)
 //
@@ -187,7 +187,7 @@
 //    label(this, config.stringRegistry.get("Root Path"), leftLabel())
 //    private val rootPathText = text(this, "/passzero", SWT.BORDER, horizontalFill())
 //
-//    def storageProfile(): DropboxStorageProfile =
+//    def sessionProfile(): DropboxStorageProfile =
 //        new DropboxStorageProfile(appNameText.getText, accessTokenText.getText, rootPathText.getText)
 //}
 //
@@ -227,7 +227,7 @@
 //    appRootText.setLayoutData(horizontalFill(2))
 //    appRootText.setText("/passzero")
 //
-//    def storageProfile(): GoogleDriveStorageProfile = {
+//    def sessionProfile(): GoogleDriveStorageProfile = {
 //        val applicationName = appNameText.getText
 //        if (applicationName.isEmpty) {
 //            throw new Exception("application name is empty")
@@ -281,7 +281,7 @@
 //        def widgetDefaultSelected(e: SelectionEvent): Unit = {}
 //    })
 //
-//    def storageProfile(): LocalStorageProfile = {
+//    def sessionProfile(): LocalStorageProfile = {
 //        val root = rootDirectoryPath.getText
 //        if (root.isEmpty) {
 //            throw new Exception(config.stringRegistry.get("root directory is empty"))

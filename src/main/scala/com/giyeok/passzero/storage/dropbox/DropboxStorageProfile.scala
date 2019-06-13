@@ -41,7 +41,7 @@ class DropboxStorageProfile(val appName: String, val accessToken: String, val ro
            |Dropbox
            |appName=$appName
            |accessToken=$accessToken
-           |rootPath=$rootPath
+           |appRootPath=$rootPath
          """.stripMargin
 
     def toBytes: Array[Byte] = {
