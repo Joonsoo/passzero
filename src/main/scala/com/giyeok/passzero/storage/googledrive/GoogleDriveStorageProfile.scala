@@ -171,7 +171,7 @@ class GoogleDriveStorageProfile(
             id -> ds
         }
     private def dataStores: Map[String, Map[String, java.io.Serializable]] =
-        dataStoresMap mapValues { dataStore => dataStore.map }
+        dataStoresMap.view.mapValues { dataStore => dataStore.map }.toMap
 
     def getDataStore[V <: io.Serializable](id: String): DataStore[V] = this.synchronized {
         dataStoresMap get id match {

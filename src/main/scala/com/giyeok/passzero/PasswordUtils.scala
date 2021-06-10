@@ -6,11 +6,11 @@ object PasswordUtils {
             Some("Password must be longer than 8")
         } else {
             val numbers = ('0' to '9').toSet
-            val hasNumbers = password exists { numbers contains }
+            val hasNumbers = password exists { numbers.contains }
             val lowercases = ('a' to 'z').toSet
-            val hasLowercase = password exists { lowercases contains }
+            val hasLowercase = password exists { lowercases.contains }
             val uppercases = ('A' to 'Z').toSet
-            val hasUppercase = password exists { uppercases contains }
+            val hasUppercase = password exists { uppercases.contains }
             if (!(hasNumbers && hasLowercase && hasUppercase)) {
                 Some("Password must have number, uppercase, and lowercase alphabets")
             } else {

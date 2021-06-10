@@ -9,9 +9,10 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <encoding>UTF-8</encoding>
-        <scala.version>2.12.6</scala.version>
-        <scala.compat.version>2.12</scala.compat.version>
-        <kotlin.version>1.2.60</kotlin.version>
+        <scala.version>2.13.6</scala.version>
+        <scala.compat.version>2.13</scala.compat.version>
+        <kotlin.version>1.5.10</kotlin.version>
+        <jfx.version>16</jfx.version>
         <main.class>com.giyeok.passzero.ui.javafx.JavaFxUI</main.class>
     </properties>
 
@@ -49,6 +50,25 @@
             <groupId>org.json4s</groupId>
             <artifactId>json4s-native_2.12</artifactId>
             <version>3.5.3</version>
+        </dependency>
+
+        <!-- OpenJFX -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>${jfx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>${jfx.version}</version>
+        </dependency>
+
+        <!-- SystemTray -->
+        <dependency>
+            <groupId>com.dorkbox</groupId>
+            <artifactId>SystemTray</artifactId>
+            <version>4.1</version>
         </dependency>
 
         <!-- Jackson -->
@@ -124,14 +144,14 @@
         </dependency>
         <dependency>
             <groupId>org.scalactic</groupId>
-            <artifactId>scalactic_2.12</artifactId>
-            <version>3.0.4</version>
+            <artifactId>scalactic_2.13</artifactId>
+            <version>3.2.9</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_2.12</artifactId>
-            <version>3.0.4</version>
+            <artifactId>scalatest_2.13</artifactId>
+            <version>3.2.9</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -140,6 +160,14 @@
         <sourceDirectory>${project.basedir}/src/main/scala</sourceDirectory>
         <testSourceDirectory>${project.basedir}/src/test/scala</testSourceDirectory>
         <plugins>
+            <plugin>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>0.0.6</version>
+                <configuration>
+                    <mainClass>HelloFX</mainClass>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>

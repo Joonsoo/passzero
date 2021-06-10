@@ -1,9 +1,9 @@
 package com.giyeok.passzero
 
 import com.giyeok.passzero.utils.ByteArrayUtil
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
-class LocalSecretTest extends FlatSpec {
+class LocalSecretTest extends AnyFlatSpec {
 
     "Every (10000 randomly generated) LocalInfo" should "successfully encoded and decoded" in {
         def test(localInfo: LocalSecret): Unit = {

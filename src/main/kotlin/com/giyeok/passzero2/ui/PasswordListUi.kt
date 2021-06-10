@@ -2,7 +2,7 @@ package com.giyeok.passzero2.ui
 
 import com.giyeok.passzero2.core.Session
 import com.giyeok.passzero2.core.SessionSecret
-import com.sun.deploy.uitoolkit.impl.fx.HostServicesFactory
+// import com.sun.deploy.uitoolkit.impl.fx.HostServicesFactory
 import io.reactivex.Observable
 import io.reactivex.Scheduler
 import io.reactivex.exceptions.CompositeException
@@ -248,7 +248,7 @@ class PasswordListUi(private val main: UiMain, sessionSecret: SessionSecret, pri
                     val link = Hyperlink(uri)
                     link.setOnAction {
                         Platform.runLater {
-                            HostServicesFactory.getInstance(main).showDocument(uri)
+                            // HostServicesFactory.getInstance(main).showDocument(uri)
                         }
                     }
                     return link
