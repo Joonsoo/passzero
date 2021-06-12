@@ -9,10 +9,10 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <encoding>UTF-8</encoding>
-        <scala.version>2.13.6</scala.version>
-        <scala.compat.version>2.13</scala.compat.version>
+        <scala.version>2.12.14</scala.version>
+        <scala.compat.version>2.12</scala.compat.version>
         <kotlin.version>1.5.10</kotlin.version>
-        <jfx.version>16</jfx.version>
+        <jfx.version>11.0.2</jfx.version>
         <main.class>com.giyeok.passzero.ui.javafx.JavaFxUI</main.class>
     </properties>
 
@@ -144,13 +144,13 @@
         </dependency>
         <dependency>
             <groupId>org.scalactic</groupId>
-            <artifactId>scalactic_2.13</artifactId>
+            <artifactId>scalactic_2.12</artifactId>
             <version>3.2.9</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_2.13</artifactId>
+            <artifactId>scalatest_2.12</artifactId>
             <version>3.2.9</version>
             <scope>test</scope>
         </dependency>
