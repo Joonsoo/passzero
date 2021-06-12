@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package com.giyeok.passzero2.core;
+
+option java_outer_classname = "LocalInfoProto";
+
+message LocalInfo {
+  LocalSecret secret = 1;
+  StorageProfile storage_profile = 2;
+}
+
+message LocalSecret {
+  bytes password_salt = 1;
+  bytes local_key = 2;
+}
+
+message StorageProfile {
+  oneof profile {
+    DropboxStorageProfile dropbox = 1;
+  }
+}
+
+message DropboxStorageProfile {
+  string app_name = 1;
+  string access_token = 2;
+  string app_root_path = 3;
+}

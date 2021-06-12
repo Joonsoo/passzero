@@ -1,0 +1,114 @@
+buildscript {
+    ext {
+        kotlinVersion = '1.5.10'
+        kotlinCoroutineVersion = '1.5.0'
+        okhttpVersion = '4.9.1'
+        protobufVersion = '3.17.3'
+        grpcVersion = '1.38.0'
+        grpcKtVersion = '1.0.0'
+        floggerVersion = '0.6'
+        junit5Version = '5.7.2'
+    }
+
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}"
+    }
+}
+
+plugins {
+    id 'java'
+    id 'org.jetbrains.kotlin.jvm' version '1.5.10'
+    id 'com.google.protobuf' version '0.8.16'
+    id 'idea'
+}
+
+group 'com.giyeok.passzero2'
+version '0.0.1-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+sourceSets {
+    main.kotlin.srcDirs += 'src/main/kotlin'
+    main.java.srcDirs += 'src/main/java'
+    main.java.srcDirs += 'build/generated/source/proto/main/java'
+    main.java.srcDirs += 'build/generated/source/proto/main/grpc'
+    main.proto.srcDirs += 'src/main/proto'
+}
+
+dependencies {
+    implementation group: 'org.jetbrains.kotlin', name: 'kotlin-stdlib-jdk8', version: kotlinVersion
+    implementation group: 'org.jetbrains.kotlinx', name: 'kotlinx-coroutines-core', version: kotlinCoroutineVersion
+    implementation group: 'org.jetbrains.kotlinx', name: 'kotlinx-coroutines-jdk8', version: kotlinCoroutineVersion
+
+    // https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp
+    implementation group: 'com.squareup.okhttp3', name: 'okhttp', version: okhttpVersion
+
+    // https://mvnrepository.com/artifact/com.google.code.gson/gson
+    implementation group: 'com.google.code.gson', name: 'gson', version: '2.8.7'
+
+    // *** Protobuf ***
+    // https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java
+    compile group: 'com.google.protobuf', name: 'protobuf-java', version: protobufVersion
+
+    // https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java-util
+    compile group: 'com.google.protobuf', name: 'protobuf-java-util', version: protobufVersion
+
+    // https://mvnrepository.com/artifact/com.dorkbox/SystemTray
+    implementation group: 'com.dorkbox', name: 'SystemTray', version: '4.1'
+
+    implementation 'org.jetbrains.kotlinx:kotlinx-cli:0.3.2'
+
+    implementation group: 'com.google.flogger', name: 'flogger', version: floggerVersion
+    implementation group: 'com.google.flogger', name: 'flogger-system-backend', version: floggerVersion
+
+    // ** Testing **
+    testCompile group: 'org.jetbrains.kotlin', name: 'kotlin-test', version: kotlinVersion
+    testCompile group: 'org.jetbrains.kotlin', name: 'kotlin-test-junit5', version: kotlinVersion
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: junit5Version
+    testRuntimeOnly group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: junit5Version
+    testImplementation 'com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0'
+    testImplementation 'com.google.truth:truth:1.1.2'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+protobuf {
+    protoc { artifact = "com.google.protobuf:protoc:${protobufVersion}" }
+    plugins {
+        grpc { artifact = "io.grpc:protoc-gen-grpc-java:${grpcVersion}" }
+        grpckt { artifact = "io.grpc:protoc-gen-grpc-kotlin:${grpcKtVersion}:jdk7@jar" }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {}
+            grpckt {}
+        }
+    }
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}
+
+compileJava.options.encoding = 'UTF-8'
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'com.giyeok.passzero2.cli.Main'
+    }
+    archiveName 'pass0cli.jar'
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    exclude('META-INF/*.RSA', 'META-INF/*.SF', 'META-INF/*.DSA')
+}
