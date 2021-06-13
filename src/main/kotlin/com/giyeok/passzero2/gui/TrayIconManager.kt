@@ -1,11 +1,8 @@
-package com.giyeok.passzero2.ui
+package com.giyeok.passzero2.gui
 
 import dorkbox.systemTray.MenuItem
 import dorkbox.systemTray.SystemTray
-import java.awt.Toolkit
 import java.awt.image.BufferedImage
-import java.nio.Buffer
-import javax.imageio.ImageIO
 import javax.swing.JSeparator
 import kotlin.system.exitProcess
 
@@ -21,9 +18,12 @@ class TrayIconManager(
   private val closeSessionMenu: MenuItem
   private val quitMenu: MenuItem
 
+  var openUiListener: (() -> Unit)? = null
+  var closeSessionListener: (() -> Unit)? = null
+
   init {
-    openWindowMenu = systemTray.menu.add(MenuItem("Open UI") { })
-    closeSessionMenu = systemTray.menu.add(MenuItem("Close Session") {})
+    openWindowMenu = systemTray.menu.add(MenuItem("Open UI") { openUiListener?.let { it() } })
+    closeSessionMenu = systemTray.menu.add(MenuItem("Close Session") { closeSessionListener?.let { it() } })
     systemTray.menu.add(JSeparator())
     quitMenu = systemTray.menu.add(MenuItem("Quit") { exitProcess(0) })
   }

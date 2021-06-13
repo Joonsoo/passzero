@@ -5,8 +5,10 @@ import kotlinx.coroutines.flow.Flow
 
 interface StorageSession {
   suspend fun getConfig(): StorageProto.Config
+
   suspend fun getDirectoryList(): List<StorageProto.DirectoryInfo>
-  suspend fun streamDirectoryList(): Flow<StorageProto.DirectoryInfo>
+  fun streamDirectoryList(): Flow<StorageProto.DirectoryInfo>
+
   suspend fun getDirectoryInfo(directory: String): StorageProto.DirectoryInfo
 
   /**
@@ -14,8 +16,32 @@ interface StorageSession {
    */
   suspend fun getEntryList(directory: String): List<StorageProto.Entry>
 
-  suspend fun streamEntryList(directory: String): Flow<StorageProto.Entry>
+  fun streamEntryList(directory: String): Flow<StorageProto.Entry>
   suspend fun getEntryDetail(directory: String, entryId: String): StorageProto.EntryDetail
+
+  /**
+   * Creates a new entry. Updates cache if cache file exists.
+   */
+  suspend fun createEntry(
+    directory: String,
+    entryInfo: StorageProto.EntryInfo,
+    detail: StorageProto.EntryDetail
+  ): StorageProto.Entry
+
+  /**
+   * Updates an existing entry. Updates cache if cache file exists.
+   */
+  suspend fun updateEntry(
+    directory: String,
+    entryId: String,
+    entryInfo: StorageProto.EntryInfo,
+    detail: StorageProto.EntryDetail
+  )
+
+  /**
+   * Deletes an entry. Updates cache if cache file exists.
+   */
+  suspend fun deleteEntry(directory: String, entryId: String)
 
   /**
    * Reads the content of entry list cache file. Returns null if not exists.

@@ -35,12 +35,19 @@ object Main {
       DropboxSession(cryptSession, localInfo.localInfoWithRevision.localInfo.storageProfile.dropbox, okHttpClient)
 
     val config = dropboxSession.getConfig()
-    val entryList0 = dropboxSession.getEntryListCache(config.defaultDirectory)
+
+    val directoryList = dropboxSession.getDirectoryList()
+    println("Directories:")
+    directoryList.forEach { println(it) }
+
+    var currentDirectory = config.defaultDirectory
+
+    val entryList0 = dropboxSession.getEntryListCache(currentDirectory)
     if (entryList0 == null) {
-      println("Loading all entries...")
+      println("Loading all entries of $currentDirectory...")
     }
     val entryList =
-      (entryList0 ?: dropboxSession.createEntryListCache(config.defaultDirectory)).entriesList.sortedBy { it.info.name }
+      (entryList0 ?: dropboxSession.createEntryListCache(currentDirectory)).entriesList.sortedBy { it.info.name }
 
     while (true) {
       print("> ")

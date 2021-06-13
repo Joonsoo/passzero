@@ -19,6 +19,8 @@ class DropboxClient(
   private val okHttpClient: OkHttpClient,
   val gson: Gson = DropboxSession.defaultGson()
 ) {
+  private val applicationJson = "application/json".toMediaType()
+
   data class DropboxError(val detail: DropboxErrorDetail) : Exception()
   data class DropboxErrorDetail(val errorSummary: String)
 
@@ -101,7 +103,7 @@ class DropboxClient(
     return entries
   }
 
-  suspend fun streamFileList(path: String): Flow<ListFileEntry> = flow {
+  fun streamFileList(path: String): Flow<ListFileEntry> = flow {
     var lastResponse = listFolder(ListFolderReq(path, false))
     lastResponse.entries.forEach { emit(it) }
     while (lastResponse.hasMore) {
@@ -122,7 +124,7 @@ class DropboxClient(
     return ByteString.readFrom(response.body!!.byteStream())
   }
 
-  class DeleteFileReq(val path: String)
+  data class DeleteFileReq(val path: String)
 
   suspend fun deleteFile(path: String) {
     sendRequest(
@@ -130,7 +132,20 @@ class DropboxClient(
         .url("https://api.dropboxapi.com/2/files/delete_v2")
         .addApiKeyHeader()
         .addHeader("Content-Type", "application/json")
-        .post(gson.toJson(DeleteFileReq(path)).toRequestBody("application/json".toMediaType()))
+        .post(gson.toJson(DeleteFileReq(path)).toRequestBody(applicationJson))
+        .build()
+    )
+  }
+
+  data class CreateFolderReq(val path: String, val autorename: Boolean)
+
+  suspend fun createFolder(path: String) {
+    sendRequest(
+      Request.Builder()
+        .url("https://api.dropboxapi.com/2/files/create_folder_v2")
+        .addApiKeyHeader()
+        .addHeader("Content-Type", "application/json")
+        .post(gson.toJson(CreateFolderReq(path, false)).toRequestBody(applicationJson))
         .build()
     )
   }
