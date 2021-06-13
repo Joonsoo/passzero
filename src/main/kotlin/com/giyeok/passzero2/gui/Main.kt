@@ -9,12 +9,11 @@ import javax.swing.JFrame
 import javax.swing.SwingUtilities
 import kotlin.system.exitProcess
 
-class MainFrame(
+class Main(
   private val config: Config,
   private val appStateManager: AppStateManager,
   private val trayIconManager: TrayIconManager
-) :
-  JFrame(config.getString("app_title")) {
+) : JFrame(config.getString("app_title")) {
 
   init {
     setBounds(100, 80, 800, 600)
@@ -39,8 +38,8 @@ class MainFrame(
             is AppStateManager.SessionReady -> EntryListView(config, state.session, p0Config!!.defaultDirectory)
           }
           contentPane = content
-          this@MainFrame.revalidate()
-          this@MainFrame.repaint()
+          this@Main.revalidate()
+          this@Main.repaint()
           if (locked) {
             trayIconManager.setLocked()
           } else {
@@ -71,7 +70,7 @@ class MainFrame(
       val config = Config(File("./localInfo.p0"))
       val appStateManager = AppStateManager(config)
       val trayIconManager = initTray(config)
-      MainFrame(config, appStateManager, trayIconManager)
+      Main(config, appStateManager, trayIconManager)
     }
   }
 }
