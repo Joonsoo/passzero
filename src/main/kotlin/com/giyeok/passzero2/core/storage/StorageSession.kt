@@ -57,4 +57,9 @@ interface StorageSession {
    * Creates the entry list cache file from the current entry lists. Returns the entry list.
    */
   suspend fun createEntryListCache(directory: String): StorageProto.EntryListCache
+
+  /**
+   * Creates the entry list cache file from the current entry lists. Streams the entry list.
+   */
+  suspend fun createEntryListCacheStreaming(directory: String): Flow<StorageProto.Entry>
 }

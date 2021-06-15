@@ -13,11 +13,12 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.flatMapMerge
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.OkHttpClient
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.coroutineContext
 import kotlin.random.Random
 
 class DropboxSession(
@@ -220,6 +221,24 @@ class DropboxSession(
 
     writeEncoded(entryCachePath(directory), entryList.toByteString())
     return entryList
+  }
+
+  @FlowPreview
+  override suspend fun createEntryListCacheStreaming(directory: String): Flow<StorageProto.Entry> {
+    val stream = streamEntryList(directory)
+    val list = mutableListOf<StorageProto.Entry>()
+    val mutex = Mutex()
+
+    return stream.onEach { entry ->
+      mutex.withLock {
+        list.add(entry)
+      }
+    }.onCompletion {
+      writeEncoded(
+        entryCachePath(directory),
+        StorageProto.EntryListCache.newBuilder().addAllEntries(list).build().toByteString()
+      )
+    }
   }
 
   // TODO config 변경 기능 구현

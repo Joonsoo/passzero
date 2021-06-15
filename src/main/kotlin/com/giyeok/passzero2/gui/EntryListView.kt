@@ -2,29 +2,31 @@ package com.giyeok.passzero2.gui
 
 import com.giyeok.passzero2.core.StorageProto
 import com.giyeok.passzero2.core.storage.StorageSession
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import java.awt.*
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
 import java.awt.datatransfer.Transferable
+import java.awt.event.KeyAdapter
+import java.awt.event.KeyEvent
 import javax.swing.*
+import kotlin.coroutines.coroutineContext
 
 class EntryListView(
   private val config: Config,
   private val session: StorageSession,
   initialDirectory: String
 ) : JPanel() {
-  private val leftPanel = JPanel()
   private val directoryListModel = DefaultComboBoxModel<StorageProto.DirectoryInfo>()
   private val directoryCombo = JComboBox(directoryListModel)
+  private val allEntryList = mutableListOf<StorageProto.Entry>()
   private val listModel = DefaultListModel<StorageProto.Entry>()
   private var directoryUpdateJob: Job? = null
   private val listScroll = JScrollPane()
   private val list = JList(listModel)
+  private val searchTextField = JTextField()
   private val detailScroll = JScrollPane()
   private val detail = EntryDetailView(config)
 
@@ -42,25 +44,43 @@ class EntryListView(
     }
   }
 
-  private fun updateEntryList() = synchronized(this) {
+  private fun updateAllEntryList(cached: StorageProto.EntryListCache) {
+    SwingUtilities.invokeLater {
+      allEntryList.addAll(cached.entriesList.sortedBy { it.info.name.lowercase() })
+      updateFilter()
+    }
+  }
+
+  private suspend fun updateEntryListFromStream(stream: Flow<StorageProto.Entry>) {
+    stream.collect { entry ->
+      if (coroutineContext.isActive) {
+        SwingUtilities.invokeLater {
+          addEntry(entry)
+        }
+      }
+    }
+    directoryUpdateJob = null
+  }
+
+  private fun replaceUpdateJob(newJob: () -> Job) = synchronized(this) {
     directoryUpdateJob?.cancel()
     directoryUpdateJob = null
-    SwingUtilities.invokeLater {
-      listModel.clear()
-    }
-    directoryUpdateJob = config.coroutineScope.launch {
-      val cached = session.getEntryListCache(directory)
-      if (cached != null) {
-        listModel.addAll(cached.entriesList.sortedBy { it.info.name.lowercase() })
-      } else {
-        session.streamEntryList(directory).collect { entry ->
-          if (isActive) {
-            SwingUtilities.invokeLater {
-              addEntry(entry)
-            }
-          }
+    directoryUpdateJob = newJob()
+  }
+
+  private fun updateEntryList() = synchronized(this) {
+    replaceUpdateJob {
+      SwingUtilities.invokeLater {
+        listModel.clear()
+        allEntryList.clear()
+      }
+      config.coroutineScope.launch {
+        val cached = session.getEntryListCache(directory)
+        if (cached != null) {
+          updateAllEntryList(cached)
+        } else {
+          updateEntryListFromStream(session.createEntryListCacheStreaming(directory))
         }
-        directoryUpdateJob = null
       }
     }
   }
@@ -69,18 +89,26 @@ class EntryListView(
     if (entry.directory == directory) {
       var index = 0
       // TODO binary search?
-      while (index < listModel.size && listModel[index].info.name.compareTo(entry.info.name, true) < 0) {
+      while (index < allEntryList.size && allEntryList[index].info.name.compareTo(entry.info.name, true) < 0) {
         index += 1
       }
-      listModel.add(index, entry)
+      allEntryList.add(index, entry)
+      updateFilter()
+    }
+  }
+
+  private fun updateFilter() {
+    SwingUtilities.invokeLater {
+      val filterText = searchTextField.text
+      listModel.clear()
+      listModel.addAll(allEntryList.filter { it.info.name.indexOf(filterText, ignoreCase = true) >= 0 })
     }
   }
 
   init {
-    layout = GridLayout(1, 2)
+    layout = BorderLayout()
 
-    leftPanel.layout = BorderLayout()
-
+    directoryCombo.font = config.bigFont
     directoryCombo.renderer = ListCellRenderer { _, value, _, _, _ ->
       JLabel(value?.name ?: "???")
     }
@@ -117,11 +145,79 @@ class EntryListView(
     }
 
     listScroll.setViewportView(list)
-    leftPanel.add(directoryCombo, BorderLayout.NORTH)
+
+    val leftTopPanel = JPanel()
+    leftTopPanel.layout = GridBagLayout()
+    var gbc = GridBagConstraints()
+    gbc.gridx = 0
+    gbc.gridy = 0
+    gbc.fill = GridBagConstraints.HORIZONTAL
+    gbc.weightx = 1.0
+    leftTopPanel.add(directoryCombo, gbc)
+
+    val refreshFromCacheButton = JButton("R")
+    gbc = GridBagConstraints()
+    gbc.gridx = 1
+    gbc.gridy = 0
+    refreshFromCacheButton.addActionListener {
+      updateEntryList()
+    }
+    leftTopPanel.add(refreshFromCacheButton, gbc)
+
+    val refreshCacheButton = JButton("RR")
+    gbc = GridBagConstraints()
+    gbc.gridx = 2
+    gbc.gridy = 0
+    refreshCacheButton.addActionListener {
+      allEntryList.clear()
+      listModel.clear()
+      replaceUpdateJob {
+        config.coroutineScope.launch {
+          session.deleteEntryListCache(directory)
+          updateEntryListFromStream(session.createEntryListCacheStreaming(directory))
+        }
+      }
+    }
+    leftTopPanel.add(refreshCacheButton, gbc)
+
+    val leftBottomPanel = JPanel()
+    leftBottomPanel.layout = GridBagLayout()
+
+    searchTextField.font = config.defaultFont
+    gbc = GridBagConstraints()
+    gbc.gridx = 0
+    gbc.gridy = 0
+    gbc.fill = GridBagConstraints.HORIZONTAL
+    gbc.weightx = 1.0
+    searchTextField.addKeyListener(object : KeyAdapter() {
+      override fun keyTyped(e: KeyEvent) {
+        updateFilter()
+      }
+    })
+    leftBottomPanel.add(searchTextField, gbc)
+
+    val newSheetButton = JButton(config.getString("New"))
+    newSheetButton.font = config.defaultFont
+    gbc = GridBagConstraints()
+    gbc.gridx = 1
+    gbc.gridy = 0
+    newSheetButton.addActionListener {
+      // TODO
+    }
+    leftBottomPanel.add(newSheetButton, gbc)
+
+    val leftPanel = JPanel()
+    leftPanel.layout = BorderLayout()
+    leftPanel.add(leftTopPanel, BorderLayout.NORTH)
     leftPanel.add(listScroll, BorderLayout.CENTER)
-    add(leftPanel)
+    leftPanel.add(leftBottomPanel, BorderLayout.SOUTH)
     detailScroll.setViewportView(detail)
-    add(detailScroll)
+
+    val splitPane = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, detailScroll)
+    splitPane.dividerLocation = 400
+    splitPane.dividerSize = 5
+    splitPane.resizeWeight = 0.5
+    add(splitPane, BorderLayout.CENTER)
 
     updateDirectoryList()
     updateEntryList()

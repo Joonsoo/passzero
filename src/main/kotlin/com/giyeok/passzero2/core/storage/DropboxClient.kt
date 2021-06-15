@@ -31,8 +31,8 @@ class DropboxClient(
       this
     }
 
-  private suspend fun sendRequest(request: Request): Response = try {
-    okHttpClient.newCall(request).await()
+  private suspend fun <T> sendRequest(request: Request, responseHandler: (Response) -> T): T = try {
+    okHttpClient.newCall(request).await().use { responseHandler(it) }
   } catch (e: UnsuccessfulResponseException) {
     if (e.responseBody != null) {
       throw e.toDropboxError()
@@ -56,26 +56,24 @@ class DropboxClient(
   data class ListFolderContinueReq(val cursor: String)
 
   suspend fun listFolder(req: ListFolderReq): ListFolderRes {
-    val response = sendRequest(
+    return sendRequest(
       Request.Builder()
         .url("https://api.dropboxapi.com/2/files/list_folder")
         .addApiKeyHeader()
         .addHeader("Content-Type", "application/json")
         .post(gson.toJson(req).toRequestBody("application/json".toMediaType())).build()
-    )
-    return gson.fromJson(response.body!!.charStream(), ListFolderRes::class.java)!!
+    ) { response -> gson.fromJson(response.body!!.charStream(), ListFolderRes::class.java)!! }
   }
 
   suspend fun listFolderContinue(cursor: String): ListFolderRes {
-    val continueResponse = sendRequest(
+    return sendRequest(
       Request.Builder()
         .url("https://api.dropboxapi.com/2/files/list_folder/continue")
         .addApiKeyHeader()
         .addHeader("Content-Type", "application/json")
         .post(gson.toJson(ListFolderContinueReq(cursor)).toRequestBody("application/json".toMediaType()))
         .build()
-    )
-    return gson.fromJson(continueResponse.body!!.charStream(), ListFolderRes::class.java)
+    ) { continueResponse -> gson.fromJson(continueResponse.body!!.charStream(), ListFolderRes::class.java) }
   }
 
   data class UploadReq(val path: String, val mode: String)
@@ -88,7 +86,7 @@ class DropboxClient(
         .addHeader("Dropbox-API-Arg", gson.toJson(UploadReq(path, "overwrite")))
         .addHeader("Content-Type", "application/octet-stream")
         .post(bytes.toByteArray().toRequestBody()).build()
-    )
+    ) {}
   }
 
 
@@ -115,13 +113,12 @@ class DropboxClient(
   data class DownloadReq(val path: String)
 
   suspend fun readRaw(path: String): ByteString {
-    val response = sendRequest(
+    return sendRequest(
       Request.Builder()
         .url("https://content.dropboxapi.com/2/files/download")
         .addApiKeyHeader()
         .addHeader("Dropbox-API-Arg", gson.toJson(DownloadReq(path))).build()
-    )
-    return ByteString.readFrom(response.body!!.byteStream())
+    ) { response -> ByteString.readFrom(response.body!!.byteStream()) }
   }
 
   data class DeleteFileReq(val path: String)
@@ -134,7 +131,7 @@ class DropboxClient(
         .addHeader("Content-Type", "application/json")
         .post(gson.toJson(DeleteFileReq(path)).toRequestBody(applicationJson))
         .build()
-    )
+    ) {}
   }
 
   data class CreateFolderReq(val path: String, val autorename: Boolean)
@@ -147,6 +144,6 @@ class DropboxClient(
         .addHeader("Content-Type", "application/json")
         .post(gson.toJson(CreateFolderReq(path, false)).toRequestBody(applicationJson))
         .build()
-    )
+    ) {}
   }
 }

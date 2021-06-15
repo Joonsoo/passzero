@@ -1,6 +1,9 @@
 package com.giyeok.passzero2.gui
 
 import dorkbox.systemTray.SystemTray
+import kotlinx.cli.ArgParser
+import kotlinx.cli.ArgType
+import kotlinx.cli.default
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.io.File
@@ -67,7 +70,13 @@ class Main(
 
     @JvmStatic
     fun main(args: Array<String>) {
-      val config = Config(File("./localInfo.p0"))
+      val parser = ArgParser("passzero-gui")
+      val localInfoPath by parser.option(ArgType.String, "localInfo", "l", "Path to local info")
+        .default("./localInfo.p0")
+
+      parser.parse(args)
+
+      val config = Config(File(localInfoPath))
       val appStateManager = AppStateManager(config)
       val trayIconManager = initTray(config)
       Main(config, appStateManager, trayIconManager)
