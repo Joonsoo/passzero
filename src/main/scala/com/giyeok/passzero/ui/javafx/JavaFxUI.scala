@@ -142,9 +142,9 @@ class JavaFxUI extends Application {
 
         // localInfo.p0 파일이 있으면 비밀번호 입력 화면으로, 없으면 초기 설정 화면으로
         if (config.localInfoFile.isFile) {
-            switchUi(new MasterPasswordUi(this), lockedTrayIcon = true)
+//            switchUi(new MasterPasswordUi(this), lockedTrayIcon = true)
         } else {
-            switchUi(new InitializationUi(this), lockedTrayIcon = true)
+//            switchUi(new InitializationUi(this), lockedTrayIcon = true)
         }
 
         showPrimaryStage()

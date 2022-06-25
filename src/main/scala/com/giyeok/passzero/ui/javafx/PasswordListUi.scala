@@ -1,9 +1,9 @@
 package com.giyeok.passzero.ui.javafx
 
 import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
-
 import com.giyeok.passzero.Password._
 import com.giyeok.passzero.{Password, PasswordManager, Session}
+import com.giyeok.passzero2.ui.UiMain
 import javafx.application.Platform
 import javafx.beans.value.{ChangeListener, ObservableValue}
 import javafx.collections.{FXCollections, ObservableList}
@@ -97,7 +97,7 @@ class PasswordStore(passwordMgr: PasswordManager) {
     }
 }
 
-class PasswordListUi(mainUi: JavaFxUI, session: Session) extends JavaFxUI.View {
+class PasswordListUi(mainUi: UiMain, session: Session) extends JavaFxUI.View {
     private var view: Pane = _
     private var controller: PasswordListController = _
 

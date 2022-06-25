@@ -1,4 +1,0 @@
-<?import javafx.scene.layout.StackPane?>
-<StackPane fx:controller="com.giyeok.passzero.ui.javafx.JavaFxUI"
-           xmlns:fx="http://javafx.com/fxml" alignment="center">
-</StackPane>

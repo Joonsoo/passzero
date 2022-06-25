@@ -7,8 +7,8 @@ import javafx.scene.control.Alert.AlertType
 import javafx.scene.control._
 import javafx.scene.input.KeyCode
 import javafx.scene.layout.Pane
-
 import com.giyeok.passzero.Session
+import com.giyeok.passzero2.ui.UiMain
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
@@ -24,7 +24,7 @@ class MasterPasswordController {
     var passwordSubmit: Button = _
 }
 
-class MasterPasswordUi(mainUi: JavaFxUI) extends JavaFxUI.View {
+class MasterPasswordUi(main: UiMain) extends JavaFxUI.View {
     private var view: Pane = _
     private var controller: MasterPasswordController = _
 
@@ -36,7 +36,7 @@ class MasterPasswordUi(mainUi: JavaFxUI) extends JavaFxUI.View {
         // controller.firstLine.prefWidthProperty().bind(view.widthProperty())
         controller.systemInfoLabel.setText(
             s"""java home: ${System.getProperty("java.home")}
-               |local info: ${mainUi.config.localInfoFile.getCanonicalPath}
+               |local info: ${main.getConfig.localInfoFile.getCanonicalPath}
              """.stripMargin.trim)
         controller.passwordLengthLabel.textProperty().bind(controller.passwordField.textProperty().length().asString())
 
@@ -61,12 +61,12 @@ class MasterPasswordUi(mainUi: JavaFxUI) extends JavaFxUI.View {
         setEnabledAll(false)
 
         implicit val ec: ExecutionContextExecutor = ExecutionContext.global
-        Future(Try(Session.load(passwordText, mainUi.config.localInfoFile))) foreach { loadResult =>
+        Future(Try(Session.load(passwordText, main.getConfig.localInfoFile))) foreach { loadResult =>
             Platform.runLater { () =>
                 loadResult match {
                     case Success(session) =>
                         // showMessage(s"Successfully loaded local info to ${config.localInfoFile.getCanonicalPath}")
-                        mainUi.switchUi(new PasswordListUi(mainUi, session), lockedTrayIcon = false)
+                        main.switchUi(new PasswordListUi(mainUi, session), lockedTrayIcon = false)
                     case Failure(exception) =>
                         // TODO Illegal Key Size는 특별 처리(설치 방법 안내)
                         val message = exception match {
