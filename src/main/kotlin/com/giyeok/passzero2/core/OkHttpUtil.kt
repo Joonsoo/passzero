@@ -20,6 +20,7 @@ suspend inline fun Call.await(): Response {
           continuation.resume(response)
         } else {
           val bodyString = response.body?.string()
+          response.body?.close()
           continuation.resumeWithException(UnsuccessfulResponseException(response, bodyString))
         }
       }

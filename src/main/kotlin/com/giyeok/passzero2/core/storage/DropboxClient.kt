@@ -13,6 +13,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import okhttp3.ResponseBody
 
 class DropboxClient(
   private val accessToken: String,
@@ -44,7 +45,12 @@ class DropboxClient(
     this.header("Authorization", "Bearer $accessToken")
 
   data class ListFolderReq(val path: String, val recursive: Boolean)
-  data class ListFolderRes(val entries: List<ListFileEntry>, val cursor: String, val hasMore: Boolean)
+  data class ListFolderRes(
+    val entries: List<ListFileEntry>,
+    val cursor: String,
+    val hasMore: Boolean
+  )
+
   data class ListFileEntry(
     @SerializedName(".tag") val tag: String,
     val name: String,
@@ -55,6 +61,10 @@ class DropboxClient(
 
   data class ListFolderContinueReq(val cursor: String)
 
+  inline fun <reified T> ResponseBody.toProtoMessage() = this.charStream().use { stream ->
+    gson.fromJson(stream, T::class.java)!!
+  }
+
   suspend fun listFolder(req: ListFolderReq): ListFolderRes {
     return sendRequest(
       Request.Builder()
@@ -62,7 +72,7 @@ class DropboxClient(
         .addApiKeyHeader()
         .addHeader("Content-Type", "application/json")
         .post(gson.toJson(req).toRequestBody("application/json".toMediaType())).build()
-    ) { response -> gson.fromJson(response.body!!.charStream(), ListFolderRes::class.java)!! }
+    ) { response -> response.body!!.toProtoMessage<ListFolderRes>() }
   }
 
   suspend fun listFolderContinue(cursor: String): ListFolderRes {
@@ -71,9 +81,11 @@ class DropboxClient(
         .url("https://api.dropboxapi.com/2/files/list_folder/continue")
         .addApiKeyHeader()
         .addHeader("Content-Type", "application/json")
-        .post(gson.toJson(ListFolderContinueReq(cursor)).toRequestBody("application/json".toMediaType()))
+        .post(
+          gson.toJson(ListFolderContinueReq(cursor)).toRequestBody("application/json".toMediaType())
+        )
         .build()
-    ) { continueResponse -> gson.fromJson(continueResponse.body!!.charStream(), ListFolderRes::class.java) }
+    ) { response -> response.body!!.toProtoMessage<ListFolderRes>() }
   }
 
   data class UploadReq(val path: String, val mode: String)
@@ -86,7 +98,7 @@ class DropboxClient(
         .addHeader("Dropbox-API-Arg", gson.toJson(UploadReq(path, "overwrite")))
         .addHeader("Content-Type", "application/octet-stream")
         .post(bytes.toByteArray().toRequestBody()).build()
-    ) {}
+    ) { it.close() }
   }
 
 
@@ -131,7 +143,7 @@ class DropboxClient(
         .addHeader("Content-Type", "application/json")
         .post(gson.toJson(DeleteFileReq(path)).toRequestBody(applicationJson))
         .build()
-    ) {}
+    ) { it.close() }
   }
 
   data class CreateFolderReq(val path: String, val autorename: Boolean)
@@ -144,6 +156,6 @@ class DropboxClient(
         .addHeader("Content-Type", "application/json")
         .post(gson.toJson(CreateFolderReq(path, false)).toRequestBody(applicationJson))
         .build()
-    ) {}
+    ) { it.close() }
   }
 }

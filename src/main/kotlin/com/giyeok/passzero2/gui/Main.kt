@@ -1,12 +1,15 @@
 package com.giyeok.passzero2.gui
 
+import com.giyeok.passzero2.gui.entries.EntryListView
 import dorkbox.systemTray.SystemTray
 import kotlinx.cli.ArgParser
 import kotlinx.cli.ArgType
 import kotlinx.cli.default
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.concurrent.Executors
 import javax.imageio.ImageIO
 import javax.swing.JFrame
 import javax.swing.SwingUtilities
@@ -27,18 +30,20 @@ class Main(
     trayIconManager.closeSessionListener = {
       appStateManager.closeSession()
     }
-    config.coroutineScope.launch {
+    CoroutineScope(config.executors.asCoroutineDispatcher()).launch {
       appStateManager.state.collect { state ->
         val locked = when (state) {
           AppStateManager.LocalInfoNotExists, AppStateManager.PasswordNotReady -> true
           is AppStateManager.SessionReady -> false
         }
-        val p0Config = if (state is AppStateManager.SessionReady) state.session.getConfig() else null
+        val p0Config =
+          if (state is AppStateManager.SessionReady) state.session.getConfig() else null
         SwingUtilities.invokeLater {
           val content = when (state) {
             AppStateManager.LocalInfoNotExists -> LocalInfoInitView(config, appStateManager)
             AppStateManager.PasswordNotReady -> MasterPasswordView(config, appStateManager)
-            is AppStateManager.SessionReady -> EntryListView(config, state.session, p0Config!!.defaultDirectory)
+            is AppStateManager.SessionReady ->
+              EntryListView(config, state.session, p0Config!!.defaultDirectory)
           }
           contentPane = content
           this@Main.revalidate()
@@ -76,7 +81,7 @@ class Main(
 
       parser.parse(args)
 
-      val config = Config(File(localInfoPath))
+      val config = Config(File(localInfoPath), Executors.newFixedThreadPool(4))
       val appStateManager = AppStateManager(config)
       val trayIconManager = initTray(config)
       Main(config, appStateManager, trayIconManager)

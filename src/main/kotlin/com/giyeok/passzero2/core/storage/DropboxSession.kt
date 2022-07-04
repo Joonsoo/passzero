@@ -31,11 +31,16 @@ class DropboxSession(
     profile: LocalInfoProto.DropboxStorageProfile,
     okHttpClient: OkHttpClient,
     gson: Gson = defaultGson()
-  ) : this(cryptSession, profile.appRootPath, DropboxClient(profile.accessToken, okHttpClient, gson))
+  ) : this(
+    cryptSession,
+    profile.appRootPath,
+    DropboxClient(profile.accessToken, okHttpClient, gson)
+  )
 
   companion object {
     fun defaultGson(): Gson {
-      return GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).create()
+      return GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+        .create()
     }
   }
 
@@ -50,7 +55,8 @@ class DropboxSession(
 
   private fun revisionRoot(): String = "$appRootPath/${cryptSession.revision}"
   private fun directoryRoot(directory: String): String = "${revisionRoot()}/$directory"
-  private fun entryRoot(directory: String, entryId: String): String = "${directoryRoot(directory)}/$entryId"
+  private fun entryRoot(directory: String, entryId: String): String =
+    "${directoryRoot(directory)}/$entryId"
 
   override suspend fun getConfig(): StorageProto.Config {
     val json = readDecoded("${revisionRoot()}/config").toStringUtf8()
@@ -96,12 +102,14 @@ class DropboxSession(
           val infoJson = readDecoded("$entryDirectory/info").toStringUtf8()
           val entryInfo = client.gson.fromJson(infoJson, EntryInfo::class.java)
           entryInfoBuilder.name = entryInfo.name
-          entryInfoBuilder.type = StorageProto.EntryType.valueOf("ENTRY_TYPE_${entryInfo.type.uppercase()}")
+          entryInfoBuilder.type =
+            StorageProto.EntryType.valueOf("ENTRY_TYPE_${entryInfo.type.uppercase()}")
         } catch (e: Exception) {
           println("Failed to load info of $entryId")
           // Ignore
         }
-        return StorageProto.Entry.newBuilder().setDirectory(directory).setId(entryId).setInfo(entryInfoBuilder).build()
+        return StorageProto.Entry.newBuilder().setDirectory(directory).setId(entryId)
+          .setInfo(entryInfoBuilder).build()
       }
       throw e
     }
@@ -123,7 +131,7 @@ class DropboxSession(
     val entryFolders = client.streamFileList(directoryRoot).filter { it.tag == "folder" }
 
     return entryFolders.flatMapMerge { file ->
-      flow { emit(getEntryInfo(directory, file.name)) }
+      flowOf(getEntryInfo(directory, file.name))
     }
   }
 
@@ -134,7 +142,10 @@ class DropboxSession(
         .setValue(v).build()
   }
 
-  override suspend fun getEntryDetail(directory: String, entryId: String): StorageProto.EntryDetail {
+  override suspend fun getEntryDetail(
+    directory: String,
+    entryId: String
+  ): StorageProto.EntryDetail {
     val entryDirectory = entryRoot(directory, entryId)
     val proto = try {
       readDecoded("$entryDirectory/detail2")
@@ -142,8 +153,12 @@ class DropboxSession(
       if (e.detail.errorSummary.startsWith("path/not_found/")) {
         val json = readDecoded("$entryDirectory/detail").toStringUtf8()
         val detailItems =
-          client.gson.fromJson<List<EntryDetailItem>>(json, object : TypeToken<List<EntryDetailItem>>() {}.type)
-        return StorageProto.EntryDetail.newBuilder().addAllItems(detailItems.map { it.toProto() }).build()
+          client.gson.fromJson<List<EntryDetailItem>>(
+            json,
+            object : TypeToken<List<EntryDetailItem>>() {}.type
+          )
+        return StorageProto.EntryDetail.newBuilder().addAllItems(detailItems.map { it.toProto() })
+          .build()
       }
       throw e
     }
@@ -160,7 +175,8 @@ class DropboxSession(
     client.createFolder(entryRoot)
     writeEncoded("$entryRoot/info2", entryInfo.toByteString())
     writeEncoded("$entryRoot/detail2", detail.toByteString())
-    return StorageProto.Entry.newBuilder().setDirectory(directory).setId(entryId).setInfo(entryInfo).build()
+    return StorageProto.Entry.newBuilder().setDirectory(directory).setId(entryId).setInfo(entryInfo)
+      .build()
   }
 
   override suspend fun updateEntry(
@@ -178,23 +194,23 @@ class DropboxSession(
     val root = entryRoot(directory, entryId)
     try {
       client.deleteFile("$root/detail")
-    } catch (e: DropboxClient.DropboxError) {
+    } catch (_: DropboxClient.DropboxError) {
     }
     try {
       client.deleteFile("$root/info")
-    } catch (e: DropboxClient.DropboxError) {
+    } catch (_: DropboxClient.DropboxError) {
     }
     try {
       client.deleteFile("$root/detail2")
-    } catch (e: DropboxClient.DropboxError) {
+    } catch (_: DropboxClient.DropboxError) {
     }
     try {
       client.deleteFile("$root/info2")
-    } catch (e: DropboxClient.DropboxError) {
+    } catch (_: DropboxClient.DropboxError) {
     }
     try {
       client.deleteFile(root)
-    } catch (e: DropboxClient.DropboxError) {
+    } catch (_: DropboxClient.DropboxError) {
     }
   }
 
@@ -217,7 +233,8 @@ class DropboxSession(
   }
 
   override suspend fun createEntryListCache(directory: String): StorageProto.EntryListCache {
-    val entryList = StorageProto.EntryListCache.newBuilder().addAllEntries(getEntryList(directory)).build()
+    val entryList =
+      StorageProto.EntryListCache.newBuilder().addAllEntries(getEntryList(directory)).build()
 
     writeEncoded(entryCachePath(directory), entryList.toByteString())
     return entryList
