@@ -7,7 +7,9 @@ import kotlinx.cli.ArgType
 import kotlinx.cli.default
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
 import java.io.File
 import java.util.concurrent.Executors
 import javax.imageio.ImageIO
@@ -20,6 +22,7 @@ class Main(
   private val appStateManager: AppStateManager,
   private val trayIconManager: TrayIconManager
 ) : JFrame(config.getString("app_title")) {
+  private val okHttpClient = OkHttpClient()
 
   init {
     setBounds(100, 80, 800, 600)
@@ -31,7 +34,7 @@ class Main(
       appStateManager.closeSession()
     }
     CoroutineScope(config.executors.asCoroutineDispatcher()).launch {
-      appStateManager.state.collect { state ->
+      appStateManager.state.collectLatest { state ->
         val locked = when (state) {
           AppStateManager.LocalInfoNotExists, AppStateManager.PasswordNotReady -> true
           is AppStateManager.SessionReady -> false
@@ -40,8 +43,10 @@ class Main(
           if (state is AppStateManager.SessionReady) state.session.getConfig() else null
         SwingUtilities.invokeLater {
           val content = when (state) {
-            AppStateManager.LocalInfoNotExists -> LocalInfoInitView(config, appStateManager)
-            AppStateManager.PasswordNotReady -> MasterPasswordView(config, appStateManager)
+            AppStateManager.LocalInfoNotExists ->
+              LocalInfoInitView(config, appStateManager, okHttpClient)
+            AppStateManager.PasswordNotReady ->
+              MasterPasswordView(config, appStateManager, okHttpClient)
             is AppStateManager.SessionReady ->
               EntryListView(config, state.session, p0Config!!.defaultDirectory)
           }

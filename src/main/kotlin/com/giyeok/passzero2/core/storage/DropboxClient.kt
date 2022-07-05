@@ -2,6 +2,7 @@ package com.giyeok.passzero2.core.storage
 
 import com.giyeok.passzero2.core.UnsuccessfulResponseException
 import com.giyeok.passzero2.core.await
+import com.giyeok.passzero2.core.storage.DropboxClient.*
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import com.google.gson.annotations.SerializedName
@@ -15,15 +16,35 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.ResponseBody
 
-class DropboxClient(
-  private val accessToken: String,
-  private val okHttpClient: OkHttpClient,
-  val gson: Gson = DropboxSession.defaultGson()
-) {
-  private val applicationJson = "application/json".toMediaType()
-
+interface DropboxClient {
   data class DropboxError(val detail: DropboxErrorDetail) : Exception()
   data class DropboxErrorDetail(val errorSummary: String)
+
+  data class ListFileEntry(
+    @SerializedName(".tag") val tag: String,
+    val name: String,
+    val id: String,
+    val clientModified: String,
+    val serverModified: String
+  )
+
+  suspend fun writeRaw(path: String, bytes: ByteString)
+  suspend fun readRaw(path: String): ByteString
+
+  suspend fun getFileList(path: String): List<ListFileEntry>
+  fun streamFileList(path: String): Flow<ListFileEntry>
+
+  suspend fun deleteFile(path: String)
+  suspend fun deleteDirectory(path: String)
+  suspend fun createFolder(path: String)
+}
+
+class DropboxClientImpl(
+  private val accessToken: String,
+  private val okHttpClient: OkHttpClient,
+  private val gson: Gson,
+) : DropboxClient {
+  private val applicationJson = "application/json".toMediaType()
 
   private fun UnsuccessfulResponseException.toDropboxError(): Exception =
     if (this.responseBody == null) this else try {
@@ -41,8 +62,14 @@ class DropboxClient(
     throw e
   }
 
-  fun Request.Builder.addApiKeyHeader(): Request.Builder =
+  private fun Request.Builder.addApiKeyHeader(): Request.Builder =
     this.header("Authorization", "Bearer $accessToken")
+
+  data class ListFolderContinueReq(val cursor: String)
+
+  private inline fun <reified T> ResponseBody.toProtoMessage() = this.charStream().use { stream ->
+    gson.fromJson(stream, T::class.java)!!
+  }
 
   data class ListFolderReq(val path: String, val recursive: Boolean)
   data class ListFolderRes(
@@ -51,21 +78,7 @@ class DropboxClient(
     val hasMore: Boolean
   )
 
-  data class ListFileEntry(
-    @SerializedName(".tag") val tag: String,
-    val name: String,
-    val id: String,
-    val clientModified: String,
-    val serverModified: String
-  )
-
-  data class ListFolderContinueReq(val cursor: String)
-
-  inline fun <reified T> ResponseBody.toProtoMessage() = this.charStream().use { stream ->
-    gson.fromJson(stream, T::class.java)!!
-  }
-
-  suspend fun listFolder(req: ListFolderReq): ListFolderRes {
+  private suspend fun listFolder(req: ListFolderReq): ListFolderRes {
     return sendRequest(
       Request.Builder()
         .url("https://api.dropboxapi.com/2/files/list_folder")
@@ -75,7 +88,7 @@ class DropboxClient(
     ) { response -> response.body!!.toProtoMessage<ListFolderRes>() }
   }
 
-  suspend fun listFolderContinue(cursor: String): ListFolderRes {
+  private suspend fun listFolderContinue(cursor: String): ListFolderRes {
     return sendRequest(
       Request.Builder()
         .url("https://api.dropboxapi.com/2/files/list_folder/continue")
@@ -90,7 +103,7 @@ class DropboxClient(
 
   data class UploadReq(val path: String, val mode: String)
 
-  suspend fun writeRaw(path: String, bytes: ByteString) {
+  override suspend fun writeRaw(path: String, bytes: ByteString) {
     sendRequest(
       Request.Builder()
         .url("https://content.dropboxapi.com/2/files/upload")
@@ -102,7 +115,7 @@ class DropboxClient(
   }
 
 
-  suspend fun getFileList(path: String): List<ListFileEntry> {
+  override suspend fun getFileList(path: String): List<ListFileEntry> {
     var lastResponse = listFolder(ListFolderReq(path, false))
     val entries = mutableListOf<ListFileEntry>()
     entries.addAll(lastResponse.entries)
@@ -113,7 +126,7 @@ class DropboxClient(
     return entries
   }
 
-  fun streamFileList(path: String): Flow<ListFileEntry> = flow {
+  override fun streamFileList(path: String): Flow<ListFileEntry> = flow {
     var lastResponse = listFolder(ListFolderReq(path, false))
     lastResponse.entries.forEach { emit(it) }
     while (lastResponse.hasMore) {
@@ -124,7 +137,7 @@ class DropboxClient(
 
   data class DownloadReq(val path: String)
 
-  suspend fun readRaw(path: String): ByteString {
+  override suspend fun readRaw(path: String): ByteString {
     return sendRequest(
       Request.Builder()
         .url("https://content.dropboxapi.com/2/files/download")
@@ -135,7 +148,7 @@ class DropboxClient(
 
   data class DeleteFileReq(val path: String)
 
-  suspend fun deleteFile(path: String) {
+  override suspend fun deleteFile(path: String) {
     sendRequest(
       Request.Builder()
         .url("https://api.dropboxapi.com/2/files/delete_v2")
@@ -146,9 +159,13 @@ class DropboxClient(
     ) { it.close() }
   }
 
+  override suspend fun deleteDirectory(path: String) {
+    deleteFile(path)
+  }
+
   data class CreateFolderReq(val path: String, val autorename: Boolean)
 
-  suspend fun createFolder(path: String) {
+  override suspend fun createFolder(path: String) {
     sendRequest(
       Request.Builder()
         .url("https://api.dropboxapi.com/2/files/create_folder_v2")

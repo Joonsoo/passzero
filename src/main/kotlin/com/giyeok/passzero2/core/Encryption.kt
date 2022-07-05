@@ -1,6 +1,9 @@
 package com.giyeok.passzero2.core
 
+import com.giyeok.passzero2.core.LocalInfoProto.LocalSecret
 import com.google.protobuf.ByteString
+import okio.ByteString.Companion.toByteString
+import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.SecretKeyFactory
@@ -73,7 +76,8 @@ object Encryption {
     }
 
     fun generateHash(salt: PasswordSalt, password: String): PasswordHash {
-      val spec = PBEKeySpec(password.toCharArray(), salt.bytes.toByteArray(), HASH_ITERATIONS, 64 * 8)
+      val spec =
+        PBEKeySpec(password.toCharArray(), salt.bytes.toByteArray(), HASH_ITERATIONS, 64 * 8)
       val skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1")
       return PasswordHash(ByteString.copyFrom(skf.generateSecret(spec).encoded))
     }
@@ -92,4 +96,18 @@ object Encryption {
   }
 
   data class PasswordPair(val hash: PasswordHash, val salt: PasswordSalt)
+
+  object SHA256 {
+    fun encode(src: ByteString): ByteString {
+      val md = MessageDigest.getInstance("SHA-256")
+      md.update(src.toByteArray())
+      return ByteString.copyFrom(md.digest())
+    }
+  }
+
+  fun generateLocalSecret(): LocalSecret =
+    LocalSecret.newBuilder()
+      .setPasswordSalt(secureRandom(32))
+      .setLocalKey(secureRandom(32))
+      .build()
 }

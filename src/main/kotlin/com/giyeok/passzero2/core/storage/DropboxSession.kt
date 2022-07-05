@@ -3,6 +3,7 @@ package com.giyeok.passzero2.core.storage
 import com.giyeok.passzero2.core.CryptSession
 import com.giyeok.passzero2.core.LocalInfoProto
 import com.giyeok.passzero2.core.StorageProto
+import com.giyeok.passzero2.core.StorageProto.DirectoryInfo
 import com.google.gson.FieldNamingPolicy
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -17,14 +18,13 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.OkHttpClient
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.coroutineContext
 import kotlin.random.Random
 
 class DropboxSession(
   private val cryptSession: CryptSession,
   private val appRootPath: String,
   val client: DropboxClient,
+  val gson: Gson,
 ) : StorageSession {
   constructor(
     cryptSession: CryptSession,
@@ -34,8 +34,12 @@ class DropboxSession(
   ) : this(
     cryptSession,
     profile.appRootPath,
-    DropboxClient(profile.accessToken, okHttpClient, gson)
+    DropboxClientImpl(profile.accessToken, okHttpClient, gson),
+    gson
   )
+
+  private val cacheMutex = Mutex()
+  private val cacheFlow = MutableStateFlow<StorageProto.EntryListCache?>(null)
 
   companion object {
     fun defaultGson(): Gson {
@@ -58,11 +62,39 @@ class DropboxSession(
   private fun entryRoot(directory: String, entryId: String): String =
     "${directoryRoot(directory)}/$entryId"
 
+  private fun configPath(): String = "${revisionRoot()}/config"
+
+  private fun directoryPath(directory: String): String =
+    "$appRootPath/${cryptSession.revision}/$directory"
+
   override suspend fun getConfig(): StorageProto.Config {
-    val json = readDecoded("${revisionRoot()}/config").toStringUtf8()
+    val json = readDecoded(configPath()).toStringUtf8()
     val builder = StorageProto.Config.newBuilder()
     JsonFormat.parser().merge(json, builder)
     return builder.build()
+  }
+
+  override suspend fun writeConfig(config: StorageProto.Config) {
+    writeEncoded(configPath(), ByteString.copyFromUtf8(JsonFormat.printer().print(config)))
+  }
+
+  override suspend fun createDirectory(directoryName: String): DirectoryInfo {
+    val directoryId =
+      "${System.currentTimeMillis()}_${String.format("%04d", Random.nextInt(10000))}"
+    client.createFolder(directoryPath(directoryId))
+    val directoryInfo = DirectoryInfo.newBuilder()
+      .setId(directoryId)
+      .setName(directoryName)
+      .build()
+    writeDirectoryInfo(directoryInfo)
+    return directoryInfo
+  }
+
+  override suspend fun writeDirectoryInfo(info: DirectoryInfo) {
+    writeEncoded(
+      "${directoryPath(info.id)}/info",
+      ByteString.copyFromUtf8(JsonFormat.printer().print(info))
+    )
   }
 
   override suspend fun getDirectoryList(): List<StorageProto.DirectoryInfo> = coroutineScope {
@@ -80,7 +112,7 @@ class DropboxSession(
   }
 
   override suspend fun getDirectoryInfo(directory: String): StorageProto.DirectoryInfo {
-    val json = readDecoded("$appRootPath/${cryptSession.revision}/$directory/info").toStringUtf8()
+    val json = readDecoded("${directoryPath(directory)}/info").toStringUtf8()
     val builder = StorageProto.DirectoryInfo.newBuilder()
     JsonFormat.parser().merge(json, builder)
     builder.id = directory
@@ -100,7 +132,7 @@ class DropboxSession(
         val entryInfoBuilder = StorageProto.EntryInfo.newBuilder()
         try {
           val infoJson = readDecoded("$entryDirectory/info").toStringUtf8()
-          val entryInfo = client.gson.fromJson(infoJson, EntryInfo::class.java)
+          val entryInfo = gson.fromJson(infoJson, EntryInfo::class.java)
           entryInfoBuilder.name = entryInfo.name
           entryInfoBuilder.type =
             StorageProto.EntryType.valueOf("ENTRY_TYPE_${entryInfo.type.uppercase()}")
@@ -152,11 +184,10 @@ class DropboxSession(
     } catch (e: DropboxClient.DropboxError) {
       if (e.detail.errorSummary.startsWith("path/not_found/")) {
         val json = readDecoded("$entryDirectory/detail").toStringUtf8()
-        val detailItems =
-          client.gson.fromJson<List<EntryDetailItem>>(
-            json,
-            object : TypeToken<List<EntryDetailItem>>() {}.type
-          )
+        val detailItems = gson.fromJson<List<EntryDetailItem>>(
+          json,
+          object : TypeToken<List<EntryDetailItem>>() {}.type
+        )
         return StorageProto.EntryDetail.newBuilder().addAllItems(detailItems.map { it.toProto() })
           .build()
       }
@@ -175,8 +206,15 @@ class DropboxSession(
     client.createFolder(entryRoot)
     writeEncoded("$entryRoot/info2", entryInfo.toByteString())
     writeEncoded("$entryRoot/detail2", detail.toByteString())
-    return StorageProto.Entry.newBuilder().setDirectory(directory).setId(entryId).setInfo(entryInfo)
+    val newEntry = StorageProto.Entry.newBuilder()
+      .setDirectory(directory)
+      .setId(entryId)
+      .setInfo(entryInfo)
       .build()
+    updateCache(directory) { cache ->
+      cache.toBuilder().addEntries(newEntry).build()
+    }
+    return newEntry
   }
 
   override suspend fun updateEntry(
@@ -188,6 +226,28 @@ class DropboxSession(
     val root = entryRoot(directory, entryId)
     writeEncoded("$root/info2", entryInfo.toByteString())
     writeEncoded("$root/detail2", detail.toByteString())
+    updateCache(directory) { cache ->
+      val updatingIdx =
+        cache.entriesList.indexOfFirst { it.directory == directory && it.id == entryId }
+      if (updatingIdx < 0) {
+        null
+      } else {
+        val updatingEntry = cache.getEntries(updatingIdx)
+        check(updatingEntry.directory == directory && updatingEntry.id == entryId)
+        if (updatingEntry.info == entryInfo) {
+          // updating entry의 정보가 바뀌지 않았으면 스킵
+          null
+        } else {
+          cache.toBuilder().setEntries(
+            updatingIdx,
+            StorageProto.Entry.newBuilder()
+              .setDirectory(directory)
+              .setId(entryId)
+              .setInfo(entryInfo)
+          ).build()
+        }
+      }
+    }
   }
 
   override suspend fun deleteEntry(directory: String, entryId: String) {
@@ -209,17 +269,62 @@ class DropboxSession(
     } catch (_: DropboxClient.DropboxError) {
     }
     try {
-      client.deleteFile(root)
+      client.deleteDirectory(root)
     } catch (_: DropboxClient.DropboxError) {
+    }
+    updateCache(directory) { cache ->
+      val deletingIdx =
+        cache.entriesList.indexOfFirst { it.directory == directory && it.id == entryId }
+      if (deletingIdx < 0) {
+        null
+      } else {
+        cache.toBuilder().removeEntries(deletingIdx).build()
+      }
     }
   }
 
   private fun entryCachePath(directory: String): String =
     "$appRootPath/${cryptSession.revision}/$directory/info_cache"
 
+  private suspend fun readCache(directory: String): StorageProto.EntryListCache? {
+    val bytes = try {
+      readDecoded(entryCachePath(directory))
+    } catch (_: DropboxClient.DropboxError) {
+      return null
+    }
+    val cache = try {
+      StorageProto.EntryListCache.parseFrom(bytes)
+    } catch (_: Exception) {
+      return null
+    }
+    cacheFlow.emit(cache)
+    return cache
+  }
+
+  private suspend fun writeCache(directory: String, cache: StorageProto.EntryListCache) {
+    writeEncoded(entryCachePath(directory), cache.toByteString())
+    println("newCache ${cache.entriesCount}")
+    cacheFlow.emit(cache)
+  }
+
+  private suspend fun updateCache(
+    directory: String,
+    updater: (StorageProto.EntryListCache) -> StorageProto.EntryListCache?
+  ) {
+    val cache = cacheFlow.value
+    if (cache != null) {
+      cacheMutex.withLock {
+        val newCache = updater(cache)
+        if (newCache != null) {
+          writeCache(directory, newCache)
+        }
+      }
+    }
+  }
+
   override suspend fun getEntryListCache(directory: String): StorageProto.EntryListCache? {
     return try {
-      StorageProto.EntryListCache.parseFrom(readDecoded(entryCachePath(directory)))
+      readCache(directory)
     } catch (e: DropboxClient.DropboxError) {
       if (e.detail.errorSummary.startsWith("path/not_found/")) {
         return null
@@ -230,14 +335,16 @@ class DropboxSession(
 
   override suspend fun deleteEntryListCache(directory: String) {
     client.deleteFile(entryCachePath(directory))
+    println("newCache null")
+    cacheFlow.emit(null)
   }
 
   override suspend fun createEntryListCache(directory: String): StorageProto.EntryListCache {
-    val entryList =
+    val cache =
       StorageProto.EntryListCache.newBuilder().addAllEntries(getEntryList(directory)).build()
 
-    writeEncoded(entryCachePath(directory), entryList.toByteString())
-    return entryList
+    writeCache(directory, cache)
+    return cache
   }
 
   @FlowPreview
@@ -251,10 +358,8 @@ class DropboxSession(
         list.add(entry)
       }
     }.onCompletion {
-      writeEncoded(
-        entryCachePath(directory),
-        StorageProto.EntryListCache.newBuilder().addAllEntries(list).build().toByteString()
-      )
+      val cache = StorageProto.EntryListCache.newBuilder().addAllEntries(list).build()
+      writeCache(directory, cache)
     }
   }
 

@@ -24,4 +24,5 @@ message DropboxStorageProfile {
   string app_name = 1;
   string access_token = 2;
   string app_root_path = 3;
+  string refresh_token = 4;
 }

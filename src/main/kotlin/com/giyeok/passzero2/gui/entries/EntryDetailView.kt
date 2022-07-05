@@ -27,15 +27,15 @@ class EntryDetailView(
 
     SwingUtilities.invokeLater {
       removeAll()
-      addKeyValue(0, config.getString("Title"), entry.info.name)
-      addKeyValue(1, config.getString("Type"), config.getString(entry.info.type.toString()))
+      addKeyValue(0, config.getString("ENTRY_NAME"), entry.info.name)
+      addKeyValue(1, config.getString("ENTRY_TYPE"), config.getString(entry.info.type.toString()))
 
       val gbc = GridBagConstraints()
       gbc.gridx = 0
       gbc.gridy = 2
       gbc.fill = GridBagConstraints.HORIZONTAL
       gbc.insets = Insets(4, 10, 4, 3)
-      loadingIcon = JLabel("Loading..")
+      loadingIcon = JLabel(config.getString("LOADING"))
       add(loadingIcon!!, gbc)
     }
 
@@ -60,11 +60,10 @@ class EntryDetailView(
       loadingIcon?.let { remove(it) }
       entryDetail.itemsList?.forEachIndexed { index, item ->
         when (item.type) {
-          StorageProto.EntryDetailItemType.ENTRY_DETAIL_ITEM_PASSWORD -> addPassword(
-            index + 2,
-            item.value
-          )
-          else -> addKeyValue(index + 2, config.getString(item.type.toString()), item.value)
+          StorageProto.EntryDetailItemType.ENTRY_DETAIL_ITEM_PASSWORD ->
+            addPassword(index + 2, item.value)
+          else ->
+            addKeyValue(index + 2, config.getString(item.type.toString()), item.value)
         }
       }
       parent?.revalidate()

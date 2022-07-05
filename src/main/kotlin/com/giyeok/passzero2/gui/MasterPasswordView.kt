@@ -11,7 +11,12 @@ import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import javax.swing.*
 
-class MasterPasswordView(private val config: Config, private val appStateManager: AppStateManager) : JPanel() {
+class MasterPasswordView(
+  private val config: Config,
+  private val appStateManager: AppStateManager,
+  private val okHttpClient: OkHttpClient
+) :
+  JPanel() {
   private val systemInfoText = JTextArea()
   private val masterPassword = JPasswordField()
   private val lengthLabel = JLabel("0")
@@ -92,21 +97,26 @@ class MasterPasswordView(private val config: Config, private val appStateManager
     }
     val password = String(masterPassword.password)
     val session = try {
-      val localInfo = LocalInfoWithRevision.decode(password, ByteString.readFrom(config.localInfoFile.inputStream()))
+      val localInfo = LocalInfoWithRevision.decode(
+        password,
+        ByteString.readFrom(config.localInfoFile.inputStream())
+      )
       val cryptSession = CryptSession.from(localInfo.localInfoWithRevision, password)
-      val okHttpClient = OkHttpClient()
-      DropboxSession(cryptSession, localInfo.localInfoWithRevision.localInfo.storageProfile.dropbox, okHttpClient)
+      DropboxSession(
+        cryptSession,
+        localInfo.localInfoWithRevision.localInfo.storageProfile.dropbox,
+        okHttpClient
+      )
     } catch (e: Exception) {
-      e.printStackTrace()
-      null
-    }
-    if (session == null) {
-      // TODO show error
       SwingUtilities.invokeLater {
+        JOptionPane.showMessageDialog(null, e.message)
         masterPassword.isEnabled = true
         confirmButton.isEnabled = true
       }
-    } else {
+      e.printStackTrace()
+      null
+    }
+    if (session != null) {
       appStateManager.sessionReady(session)
     }
   }

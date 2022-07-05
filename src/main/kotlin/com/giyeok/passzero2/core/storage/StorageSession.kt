@@ -6,6 +6,12 @@ import kotlinx.coroutines.flow.Flow
 interface StorageSession {
   suspend fun getConfig(): StorageProto.Config
 
+  suspend fun writeConfig(config: StorageProto.Config)
+
+  suspend fun createDirectory(directoryName: String): StorageProto.DirectoryInfo
+
+  suspend fun writeDirectoryInfo(info: StorageProto.DirectoryInfo)
+
   suspend fun getDirectoryList(): List<StorageProto.DirectoryInfo>
   fun streamDirectoryList(): Flow<StorageProto.DirectoryInfo>
 

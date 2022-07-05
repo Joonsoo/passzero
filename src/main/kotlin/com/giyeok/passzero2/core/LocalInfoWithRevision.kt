@@ -11,7 +11,10 @@ data class LocalInfoWithRevision(
   val revision: Long,
   val localInfo: LocalInfoProto.LocalInfo
 ) {
-  data class LocalInfoWithTimestamp(val localInfoWithRevision: LocalInfoWithRevision, val timestamp: Timestamp)
+  data class LocalInfoWithTimestamp(
+    val localInfoWithRevision: LocalInfoWithRevision,
+    val timestamp: Timestamp
+  )
 
   companion object {
     fun decode(password: String, input: ByteString): LocalInfoWithTimestamp {
@@ -23,8 +26,10 @@ data class LocalInfoWithRevision(
       val timestamp = Timestamps.fromMillis(reader.readLong())
       val revision = reader.readLong()
       val localInfoSalt = Encryption.PasswordSalt(reader.readBytes(32))
-      val localInfoIv = Encryption.InitVector(reader.readBytes(Encryption.InitVector.INITVEC_LENGTH))
-      val localInfoKey = Encryption.PasswordHasher.generateHash(localInfoSalt, password).bytes.substring(0, 32)
+      val localInfoIv =
+        Encryption.InitVector(reader.readBytes(Encryption.InitVector.INITVEC_LENGTH))
+      val localInfoKey =
+        Encryption.PasswordHasher.generateHash(localInfoSalt, password).bytes.substring(0, 32)
 
       val encodedContent = reader.readRest()
       val content = Encryption.AES256CBC.decode(encodedContent, localInfoKey, localInfoIv)
@@ -34,7 +39,8 @@ data class LocalInfoWithRevision(
           val localSecret = LegacyLocalSecret.fromBytes(content.substring(0, 64))
           val storageProfile = LegacyStorageProfile.fromBytes(content.substring(64))
           val localInfo =
-            LocalInfoProto.LocalInfo.newBuilder().setSecret(localSecret).setStorageProfile(storageProfile).build()
+            LocalInfoProto.LocalInfo.newBuilder().setSecret(localSecret)
+              .setStorageProfile(storageProfile).build()
           LocalInfoWithTimestamp(LocalInfoWithRevision(revision, localInfo), timestamp)
         }
         2 -> {
@@ -70,5 +76,6 @@ data class LocalInfoWithRevision(
     return ByteString.copyFrom(buf.toByteArray())
   }
 
-  fun encode(password: String): ByteString = encode(password, Timestamps.fromMillis(System.currentTimeMillis()))
+  fun encode(password: String): ByteString =
+    encode(password, Timestamps.fromMillis(System.currentTimeMillis()))
 }

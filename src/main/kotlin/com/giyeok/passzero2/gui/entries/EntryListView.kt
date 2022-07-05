@@ -5,17 +5,21 @@ import com.giyeok.passzero2.core.storage.StorageSession
 import com.giyeok.passzero2.gui.Config
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.awt.*
+import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
-import java.awt.event.KeyListener
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.*
+import javax.swing.event.ListDataEvent
+import javax.swing.event.ListDataListener
 
 class EntryListView(
   private val config: Config,
@@ -35,23 +39,63 @@ class EntryListView(
     EntryDetailState.EmptyDetails(true)
   )
   private val stateMutex = Mutex()
-  private val stateFlow = MutableSharedFlow<EntryListViewState>()
+
+  /**
+   * 의미적으로는 stateFlow가 MutableSharedFlow<EntryListViewState>(0) 이어도 되는데, 이상하게 setState에서
+   * emit이 멈추지 않거나 tryEmit으로 바꾸면 emit이 실패하는 현상이 생겨서 replay=1로 주고 BufferOverflow를 SUSPEND가 아닌 것으로 바꿈
+   */
+  private val stateFlow =
+    MutableSharedFlow<EntryListViewState>(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
   private val directoryCombo = JComboBox(state.directoryList)
   private val refreshButton = JButton(ImageIcon(javaClass.getResource("/icons8-refresh-30.png")))
 
   private val list = JList(state.filteredEntries)
   private val searchTextField = JTextField()
+  private val entriesCountLabel = JLabel()
   private val detailScroll = JScrollPane()
   private val detailMenus = JPanel()
 
   init {
     initView(state)
+    // TODO resource leak on `launch`es?
     CoroutineScope(config.executors.asCoroutineDispatcher()).launch {
       stateFlow.map { it.entryDetailState }.distinctUntilChanged().collectLatest { state ->
         updateDetailsView(state)
       }
     }
+
+    val filteredEntriesCountFlow = callbackFlow {
+      state.filteredEntries.addListDataListener(object : ListDataListener {
+        override fun intervalAdded(e: ListDataEvent?) {
+          trySend(state.filteredEntries.size)
+        }
+
+        override fun intervalRemoved(e: ListDataEvent?) {
+          trySend(state.filteredEntries.size)
+        }
+
+        override fun contentsChanged(e: ListDataEvent?) {
+          trySend(state.filteredEntries.size)
+        }
+      })
+      awaitClose()
+    }
+
+    CoroutineScope(config.executors.asCoroutineDispatcher()).launch {
+      filteredEntriesCountFlow.zip(stateFlow.map { it.entryList.size }, ::Pair)
+        .distinctUntilChanged()
+        .collectLatest {
+          SwingUtilities.invokeLater {
+            if (state.filterText.isEmpty()) {
+              entriesCountLabel.text = "${state.entryList.size}"
+            } else {
+              entriesCountLabel.text = "${state.filteredEntries.size}/${state.entryList.size}"
+            }
+          }
+        }
+    }
+
     CoroutineScope(config.executors.asCoroutineDispatcher()).launch {
       stateFlow.map { it.regeneratingCache }.distinctUntilChanged()
         .collectLatest { regeneratingCache ->
@@ -174,13 +218,7 @@ class EntryListView(
     gbc.gridy = 0
     gbc.fill = GridBagConstraints.HORIZONTAL
     gbc.weightx = 1.0
-    searchTextField.addKeyListener(object : KeyListener {
-      override fun keyTyped(e: KeyEvent?) {
-      }
-
-      override fun keyPressed(e: KeyEvent?) {
-      }
-
+    searchTextField.addKeyListener(object : KeyAdapter() {
       override fun keyReleased(e: KeyEvent?) {
         setState {
           state.filterText = searchTextField.text
@@ -189,14 +227,31 @@ class EntryListView(
     })
     leftBottomPanel.add(searchTextField, gbc)
 
-    val newSheetButton = JButton(config.getString("NEW_ENTRY"))
-    newSheetButton.font = config.defaultFont
+    entriesCountLabel.font = config.defaultFont
+    entriesCountLabel.addMouseListener(object : MouseAdapter() {
+      override fun mouseClicked(e: MouseEvent?) {
+        if (searchTextField.text.isNotEmpty()) {
+          searchTextField.text = ""
+          setState {
+            state.filterText = ""
+          }
+        }
+      }
+    })
     gbc = GridBagConstraints()
     gbc.gridx = 1
     gbc.gridy = 0
+    leftBottomPanel.add(entriesCountLabel, gbc)
+
+    val newSheetButton = JButton(config.getString("NEW_ENTRY"))
+    newSheetButton.font = config.defaultFont
+    gbc = GridBagConstraints()
+    gbc.gridx = 2
+    gbc.gridy = 0
     newSheetButton.addActionListener {
+      val lastSelection = list.selectedValue
       setState {
-        state.entryDetailState = EntryDetailState.CreatingEntry(list.selectedValue)
+        state.entryDetailState = EntryDetailState.CreatingEntry(lastSelection)
       }
     }
     leftBottomPanel.add(newSheetButton, gbc)
@@ -241,138 +296,149 @@ class EntryListView(
     }
   }
 
-  private fun updateDetailsView(detailState: EntryDetailState) {
-    fun initEditView(
-      entry: StorageProto.Entry?,
-      saveButtonString: String,
-      cancelButtonString: String,
-      selectionAfterCancel: StorageProto.Entry?,
-      applyFunc: suspend (StorageProto.EntryInfo, StorageProto.EntryDetail) -> Unit
-    ) {
-      val editView = EntryDetailEditView(config, session, entry)
-      detailScroll.setViewportView(editView)
+  private inline fun initEditView(
+    entry: StorageProto.Entry?,
+    saveButtonString: String,
+    cancelButtonString: String,
+    selectionAfterCancel: StorageProto.Entry?,
+    crossinline applyFunc: suspend (StorageProto.EntryInfo, StorageProto.EntryDetail) -> Unit
+  ) {
+    val editView = EntryDetailEditView(config, session, entry)
+    detailScroll.setViewportView(editView)
 
-      val saveButton = JButton(config.getString(saveButtonString))
-      saveButton.isEnabled = false
+    val saveButton = JButton(config.getString(saveButtonString))
+    saveButton.isEnabled = false
 
+    // TODO resource leak?
+    CoroutineScope(config.executors.asCoroutineDispatcher()).launch {
+      editView.readyState.collectLatest { ready ->
+        SwingUtilities.invokeLater {
+          saveButton.isEnabled = ready
+        }
+      }
+    }
+    saveButton.addActionListener {
+      val entryInfo = editView.getEntryInfo()
+      val details = editView.getEntryDetails()
       CoroutineScope(config.executors.asCoroutineDispatcher()).launch {
-        editView.readyState.collect { ready ->
-          SwingUtilities.invokeLater {
-            saveButton.isEnabled = ready
-          }
-        }
+        applyFunc(entryInfo, details)
       }
-      saveButton.addActionListener {
-        val entryInfo = editView.getEntryInfo()
-        val details = editView.getEntryDetails()
-        CoroutineScope(config.executors.asCoroutineDispatcher()).launch {
-          applyFunc(entryInfo, details)
-        }
-      }
-
-      val cancelButton = JButton(config.getString(cancelButtonString))
-      cancelButton.addActionListener {
-        setState {
-          this.entryDetailState = if (selectionAfterCancel == null) {
-            EntryDetailState.EmptyDetails(false)
-          } else {
-            EntryDetailState.ShowingDetails(selectionAfterCancel, false)
-          }
-        }
-      }
-
-      detailMenus.removeAll()
-      detailMenus.isVisible = true
-      detailMenus.add(saveButton)
-      detailMenus.add(cancelButton)
     }
 
-    SwingUtilities.invokeLater {
-      when (detailState) {
-        is EntryDetailState.CreatingEntry -> {
-          list.isEnabled = false
-          list.clearSelection()
+    val cancelButton = JButton(config.getString(cancelButtonString))
+    cancelButton.addActionListener {
+      setState {
+        this.entryDetailState = if (selectionAfterCancel == null) {
+          EntryDetailState.EmptyDetails(false)
+        } else {
+          EntryDetailState.ShowingDetails(selectionAfterCancel, false)
+        }
+      }
+    }
 
-          initEditView(
-            null,
-            "ENTRY_CREATE_SAVE",
-            "ENTRY_CREATE_CANCEL",
-            detailState.lastSelection
-          ) { entryInfo, details ->
-            val newEntry = session.createEntry(state.directory, entryInfo, details)
+    detailMenus.removeAll()
+    detailMenus.isVisible = true
+    detailMenus.add(saveButton)
+    detailMenus.add(cancelButton)
+    detailMenus.revalidate()
+    detailMenus.repaint()
+  }
 
-            setState {
-              this.addEntry(newEntry)
-              this.entryDetailState = if (detailState.lastSelection != null) {
-                EntryDetailState.ShowingDetails(detailState.lastSelection, false)
-              } else {
-                EntryDetailState.EmptyDetails(false)
-              }
-            }
+  private fun updateDetailsView(detailState: EntryDetailState) {
+    when (detailState) {
+      is EntryDetailState.CreatingEntry -> SwingUtilities.invokeLater {
+        list.isEnabled = false
+        list.clearSelection()
+
+        initEditView(
+          null,
+          "ENTRY_CREATE_SAVE",
+          "ENTRY_CREATE_CANCEL",
+          detailState.lastSelection
+        ) { entryInfo, details ->
+          val newEntry = session.createEntry(state.directory, entryInfo, details)
+
+          setState {
+            this.addEntry(newEntry)
+            this.entryDetailState = EntryDetailState.ShowingDetails(newEntry, false)
           }
         }
-        is EntryDetailState.EditingEntry -> {
-          list.isEnabled = false
-          list.setSelectedValue(detailState.entry, true)
+      }
+      is EntryDetailState.EditingEntry -> SwingUtilities.invokeLater {
+        list.isEnabled = false
+        list.setSelectedValue(detailState.entry, true)
 
-          initEditView(
-            null,
-            "ENTRY_EDIT_SAVE",
-            "ENTRY_EDIT_CANCEL",
-            detailState.entry
-          ) { entryInfo, details ->
-            session.updateEntry(state.directory, detailState.entry.id, entryInfo, details)
+        initEditView(
+          detailState.entry,
+          "ENTRY_EDIT_SAVE",
+          "ENTRY_EDIT_CANCEL",
+          detailState.entry
+        ) { entryInfo, details ->
+          session.updateEntry(state.directory, detailState.entry.id, entryInfo, details)
 
-            setState {
-              this.entryDetailState = EntryDetailState.ShowingDetails(detailState.entry, false)
-            }
+          setState {
+            this.updateEntry(detailState.entry, entryInfo)
+            this.entryDetailState = EntryDetailState.ShowingDetails(detailState.entry, false)
           }
         }
-        is EntryDetailState.ShowingDetails -> {
-          list.isEnabled = true
-          if (!detailState.userTriggered) {
-            SwingUtilities.invokeLater {
-              list.setSelectedValue(detailState.entry, true)
-            }
+      }
+      is EntryDetailState.ShowingDetails -> SwingUtilities.invokeLater {
+        list.isEnabled = true
+        if (!detailState.userTriggered) {
+          SwingUtilities.invokeLater {
+            list.setSelectedValue(detailState.entry, true)
           }
+        }
 
-          detailScroll.setViewportView(EntryDetailView(config, session, detailState.entry))
+        detailScroll.setViewportView(EntryDetailView(config, session, detailState.entry))
 
-          detailMenus.removeAll()
-          detailMenus.isVisible = true
+        detailMenus.removeAll()
+        detailMenus.isVisible = true
 
-          val editButton = JButton(config.getString("ENTRY_EDIT"))
-          editButton.addActionListener {
-            setState {
-              this.entryDetailState = EntryDetailState.EditingEntry(detailState.entry)
-            }
+        val editButton = JButton(config.getString("ENTRY_EDIT"))
+        editButton.addActionListener {
+          setState {
+            this.entryDetailState = EntryDetailState.EditingEntry(detailState.entry)
           }
-          detailMenus.add(editButton)
+        }
+        detailMenus.add(editButton)
 
-          val deleteButton = JButton(config.getString("ENTRY_DELETE"))
-          deleteButton.addActionListener {
-            // TODO 엔트리 삭제 처리
+        val deleteButton = JButton(config.getString("ENTRY_DELETE"))
+        deleteButton.addActionListener {
+          val confirmed = JOptionPane.showConfirmDialog(
+            null,
+            config.getString("CONFIRM_DELETE_ENTRY").format(detailState.entry.info.name),
+            "",
+            JOptionPane.YES_NO_OPTION
+          )
+          if (confirmed == JOptionPane.YES_OPTION) {
+            CoroutineScope(config.executors.asCoroutineDispatcher()).launch {
+              session.deleteEntry(detailState.entry.directory, detailState.entry.id)
+            }
             setState {
+              this.deleteEntry(detailState.entry)
               this.entryDetailState = EntryDetailState.EmptyDetails(false)
             }
           }
-          detailMenus.add(deleteButton)
         }
-        is EntryDetailState.EmptyDetails -> {
-          list.isEnabled = true
-          if (!detailState.userTriggered) {
-            SwingUtilities.invokeLater {
-              list.clearSelection()
-            }
-          }
-
-          detailScroll.setViewportView(JLabel(config.getString("SELECT_ENTRY")))
-          detailMenus.removeAll()
-          detailMenus.isVisible = false
-        }
+        detailMenus.add(deleteButton)
+        detailMenus.revalidate()
+        detailMenus.repaint()
       }
-      detailMenus.revalidate()
-      detailMenus.repaint()
+      is EntryDetailState.EmptyDetails -> SwingUtilities.invokeLater {
+        list.isEnabled = true
+        if (!detailState.userTriggered) {
+          SwingUtilities.invokeLater {
+            list.clearSelection()
+          }
+        }
+
+        detailScroll.setViewportView(JLabel(config.getString("SELECT_ENTRY")))
+        detailMenus.removeAll()
+        detailMenus.isVisible = false
+        detailMenus.revalidate()
+        detailMenus.repaint()
+      }
     }
   }
 }

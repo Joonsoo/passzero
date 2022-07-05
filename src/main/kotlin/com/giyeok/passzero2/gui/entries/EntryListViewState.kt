@@ -1,11 +1,14 @@
 package com.giyeok.passzero2.gui.entries
 
 import com.giyeok.passzero2.core.StorageProto
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.util.concurrent.ExecutorService
 import javax.swing.DefaultComboBoxModel
 import javax.swing.DefaultListModel
@@ -81,6 +84,21 @@ data class EntryListViewState(
     }
   }
 
+  fun updateEntry(oldEntry: StorageProto.Entry, newEntryInfo: StorageProto.EntryInfo) {
+    entryList.remove(oldEntry)
+    SwingUtilities.invokeLater {
+      filteredEntries.removeElement(oldEntry)
+      addEntry(oldEntry.toBuilder().setInfo(newEntryInfo).build())
+    }
+  }
+
+  fun deleteEntry(entry: StorageProto.Entry) {
+    entryList.remove(entry)
+    SwingUtilities.invokeLater {
+      filteredEntries.removeElement(entry)
+    }
+  }
+
   fun emitDirectoryListUpdater(updater: Flow<StorageProto.DirectoryInfo>?) {
     runBlocking {
       directoryListUpdaters.emit(updater)
@@ -112,6 +130,26 @@ data class EntryListViewState(
         filteredEntries.clear()
         filteredEntries.addAll(entryList.filter { isPassingFilter(it) })
       }
+//        var allEntryIdx = entryList.size - 1
+//        (0 until filteredEntries.size).reversed().forEach { idx ->
+//          val entry = filteredEntries.get(idx)
+//          while (allEntryIdx >= 0 && entryList[allEntryIdx] != entry) {
+//            if (isPassingFilter(entryList[allEntryIdx])) {
+//              filteredEntries.add(idx + 1, entryList[allEntryIdx])
+//            }
+//            allEntryIdx -= 1
+//          }
+//          allEntryIdx -= 1
+//          if (!isPassingFilter(entry)) {
+//            filteredEntries.remove(idx)
+//          }
+//        }
+//        while (allEntryIdx >= 0) {
+//          if (isPassingFilter(entryList[allEntryIdx])) {
+//            filteredEntries.add(0, entryList[allEntryIdx])
+//          }
+//          allEntryIdx -= 1
+//        }
     }
 }
 
