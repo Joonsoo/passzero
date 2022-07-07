@@ -8,13 +8,13 @@ import com.google.gson.JsonSyntaxException
 import com.google.gson.annotations.SerializedName
 import com.google.protobuf.ByteString
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Response
-import okhttp3.ResponseBody
 
 interface DropboxClient {
   data class DropboxError(val detail: DropboxErrorDetail) : Exception()
@@ -39,12 +39,19 @@ interface DropboxClient {
   suspend fun createFolder(path: String)
 }
 
+data class DropboxToken(val accessToken: String, val refreshToken: String)
+
 class DropboxClientImpl(
-  private val accessToken: String,
+  val appKey: String,
+  initialToken: DropboxToken,
   private val okHttpClient: OkHttpClient,
   private val gson: Gson,
+  private val accessTokenUpdateListener: (suspend (DropboxToken) -> Unit)?
 ) : DropboxClient {
   private val applicationJson = "application/json".toMediaType()
+
+  private val requestMutex = Mutex()
+  private val tokenFlow = MutableStateFlow(initialToken)
 
   private fun UnsuccessfulResponseException.toDropboxError(): Exception =
     if (this.responseBody == null) this else try {
@@ -53,21 +60,61 @@ class DropboxClientImpl(
       this
     }
 
-  private suspend fun <T> sendRequest(request: Request, responseHandler: (Response) -> T): T = try {
-    okHttpClient.newCall(request).await().use { responseHandler(it) }
-  } catch (e: UnsuccessfulResponseException) {
-    if (e.responseBody != null) {
-      throw e.toDropboxError()
+  private suspend fun <T> sendRequestRaw(request: Request, responseHandler: (Response) -> T): T =
+    try {
+      okHttpClient.newCall(request).await().use { responseHandler(it) }
+    } catch (e: UnsuccessfulResponseException) {
+      if (e.responseBody != null) {
+        throw e.toDropboxError()
+      }
+      throw e
     }
-    throw e
+
+  suspend fun refreshToken(): DropboxToken {
+    data class RefreshTokenResponse(
+      val accessToken: String,
+      val tokenType: String,
+      val expiresIn: Int
+    )
+
+    val refreshToken = tokenFlow.value.refreshToken
+    val request = Request.Builder()
+      .url("https://api.dropboxapi.com/oauth2/token")
+      .post(
+        FormBody.Builder()
+          .addEncoded("grant_type", "refresh_token")
+          .addEncoded("client_id", appKey)
+          .addEncoded("refresh_token", tokenFlow.value.refreshToken)
+          .build()
+      ).build()
+    val response = okHttpClient.newCall(request).await()
+    val responseBody = response.body!!.jsonTo<RefreshTokenResponse>()
+
+    return DropboxToken(responseBody.accessToken, refreshToken)
   }
 
+  private suspend fun <T> sendRequest(request: Request, responseHandler: (Response) -> T): T =
+    requestMutex.withLock {
+      try {
+        sendRequestRaw(request, responseHandler)
+      } catch (e: DropboxError) {
+        if (e.detail.errorSummary.startsWith("expired_access_token/")) {
+          val newToken = refreshToken()
+          accessTokenUpdateListener?.invoke(newToken)
+          tokenFlow.tryEmit(newToken)
+          sendRequestRaw(request, responseHandler)
+        } else {
+          throw e
+        }
+      }
+    }
+
   private fun Request.Builder.addApiKeyHeader(): Request.Builder =
-    this.header("Authorization", "Bearer $accessToken")
+    this.header("Authorization", "Bearer ${tokenFlow.value.accessToken}")
 
   data class ListFolderContinueReq(val cursor: String)
 
-  private inline fun <reified T> ResponseBody.toProtoMessage() = this.charStream().use { stream ->
+  private inline fun <reified T> ResponseBody.jsonTo() = this.charStream().use { stream ->
     gson.fromJson(stream, T::class.java)!!
   }
 
@@ -84,8 +131,9 @@ class DropboxClientImpl(
         .url("https://api.dropboxapi.com/2/files/list_folder")
         .addApiKeyHeader()
         .addHeader("Content-Type", "application/json")
-        .post(gson.toJson(req).toRequestBody("application/json".toMediaType())).build()
-    ) { response -> response.body!!.toProtoMessage<ListFolderRes>() }
+        .post(gson.toJson(req).toRequestBody(applicationJson))
+        .build()
+    ) { response -> response.body!!.jsonTo<ListFolderRes>() }
   }
 
   private suspend fun listFolderContinue(cursor: String): ListFolderRes {
@@ -95,10 +143,10 @@ class DropboxClientImpl(
         .addApiKeyHeader()
         .addHeader("Content-Type", "application/json")
         .post(
-          gson.toJson(ListFolderContinueReq(cursor)).toRequestBody("application/json".toMediaType())
-        )
-        .build()
-    ) { response -> response.body!!.toProtoMessage<ListFolderRes>() }
+          gson.toJson(ListFolderContinueReq(cursor))
+            .toRequestBody(applicationJson)
+        ).build()
+    ) { response -> response.body!!.jsonTo<ListFolderRes>() }
   }
 
   data class UploadReq(val path: String, val mode: String)

@@ -1,13 +1,9 @@
 package com.giyeok.passzero2.gui
 
-import com.giyeok.passzero2.core.CryptSession
-import com.giyeok.passzero2.core.Encryption
+import com.giyeok.passzero2.core.*
 import com.giyeok.passzero2.core.LocalInfoProto.*
-import com.giyeok.passzero2.core.LocalInfoWithRevision
-import com.giyeok.passzero2.core.StorageProto
-import com.giyeok.passzero2.core.StorageProto.EntryInfo
-import com.giyeok.passzero2.core.await
 import com.giyeok.passzero2.core.storage.DropboxSession
+import com.giyeok.passzero2.core.storage.DropboxToken
 import com.google.gson.FieldNamingPolicy
 import com.google.gson.GsonBuilder
 import com.google.protobuf.ByteString
@@ -183,7 +179,7 @@ class LocalInfoInitView(
     add(label("DROPBOX_AUTH_URI"), gbcLabel(4))
     add(dropboxAuthUri, gbcBody(4))
 
-    add(label("DROPBOX_ACCESS_KEY"), gbcLabel(5))
+    add(label("DROPBOX_AUTHORIZATION_CODE"), gbcLabel(5))
     add(dropboxAccessCode, gbcBody(5))
 
     add(label("DROPBOX_ACCESS_TOKEN_STATUS"), gbcLabel(6))
@@ -245,7 +241,8 @@ class LocalInfoInitView(
     CoroutineScope(config.executors.asCoroutineDispatcher()).launch {
       stateFlow.map { it.localSecret }.distinctUntilChanged()
         .collectLatest { localSecret ->
-          localSecretText.text = localSecret.toString()
+          localSecretText.text = "KEY: ${localSecret.localKey.toHexString()}\n" +
+            "SALT: ${localSecret.passwordSalt.toHexString()}"
         }
     }
 
@@ -344,8 +341,10 @@ class LocalInfoInitView(
         SwingUtilities.invokeLater {
           if (tokenStatus == null) {
             dropboxTokenStatus.text = config.getString("DROPBOX_TOKEN_NOT_READY")
+            dropboxTokenStatus.background = Color.RED
           } else {
             dropboxTokenStatus.text = config.getString("DROPBOX_TOKEN_OK")
+            dropboxTokenStatus.background = Color.WHITE
           }
         }
       }
@@ -353,15 +352,16 @@ class LocalInfoInitView(
 
     CoroutineScope(config.executors.asCoroutineDispatcher()).launch {
       stateFlow.collectLatest { state ->
-        localSecretText.text = state.localSecret.toString()
-        if (dropboxAppKey.text != state.dropboxState.appKey) {
-          dropboxAppKey.text = state.dropboxState.appKey
-        }
-        if (dropboxRedirectUri.text != state.dropboxState.redirectUri) {
-          dropboxRedirectUri.text = state.dropboxState.redirectUri
-        }
-        if (dropboxAppRootPath.text != state.dropboxState.appRootPath) {
-          dropboxAppRootPath.text = state.dropboxState.appRootPath
+        SwingUtilities.invokeLater {
+          if (dropboxAppKey.text != state.dropboxState.appKey) {
+            dropboxAppKey.text = state.dropboxState.appKey
+          }
+          if (dropboxRedirectUri.text != state.dropboxState.redirectUri) {
+            dropboxRedirectUri.text = state.dropboxState.redirectUri
+          }
+          if (dropboxAppRootPath.text != state.dropboxState.appRootPath) {
+            dropboxAppRootPath.text = state.dropboxState.appRootPath
+          }
         }
       }
     }
@@ -410,6 +410,7 @@ class LocalInfoInitView(
             .setDropbox(
               DropboxStorageProfile.newBuilder()
                 .setAppName("Passzero")
+                .setAppKey(state.dropboxState.appKey)
                 .setAccessToken(dropboxAccessToken)
                 .setRefreshToken(dropboxRefreshToken)
                 .setAppRootPath(state.dropboxState.appRootPath)
@@ -425,8 +426,13 @@ class LocalInfoInitView(
   private fun initializeStorage(localInfo: LocalInfoWithRevision, masterPassword: String) {
     runBlocking {
       val cryptSession = CryptSession.from(localInfo, masterPassword)
-      val dropboxSession =
-        DropboxSession(cryptSession, localInfo.localInfo.storageProfile.dropbox, okHttpClient)
+      val dropboxSession = DropboxSession(
+        cryptSession,
+        localInfo.localInfo.storageProfile.dropbox,
+        okHttpClient
+      ) { newToken ->
+        // shouldn't happen
+      }
 
       val newDirectory = dropboxSession.createDirectory("Personal")
       dropboxSession.writeConfig(
@@ -442,8 +448,6 @@ data class LocalInfoInitViewState(
   var masterPasswordOk: Boolean,
   var masterPasswordVerifyOk: Boolean,
 )
-
-data class DropboxToken(val accessToken: String, val refreshToken: String)
 
 data class DropboxState(
   var appKey: String,

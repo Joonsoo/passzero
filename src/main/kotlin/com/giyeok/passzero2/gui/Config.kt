@@ -29,8 +29,23 @@ class Config(
     "ENTRY_CREATE_CANCEL" -> "Cancel"
     "ENTRY_EDIT_SAVE" -> "Save"
     "ENTRY_EDIT_CANCEL" -> "Cancel"
+    "ENTRY_DETAIL_NEW_ITEM" -> "Add"
+    "CONFIRM_DELETE_ENTRY" -> "Do you really want to delete entry \"%s\"?"
     "SELECT_ENTRY" -> "Select an entry"
     "NEW_ENTRY" -> "New"
+    "LOCAL_SECRET" -> "Local Secret"
+    "REGENERATE_LOCAL_SECRET" -> "Regenerate Local Secret"
+    "DROPBOX_APP_KEY" -> "Dropbox App Key"
+    "DROPBOX_REDIRECT_URI" -> "Dropbox Redirect URI"
+    "DROPBOX_AUTH_URI" -> "Dropbox Authorize URI"
+    "DROPBOX_AUTHORIZATION_CODE" -> "Dropbox Authorization Code"
+    "DROPBOX_ACCESS_TOKEN_STATUS" -> "Dropbox Auth Status"
+    "DROPBOX_TOKEN_NOT_READY" -> "Not OK"
+    "DROPBOX_TOKEN_OK" -> "OK"
+    "DROPBOX_APP_ROOT_PATH" -> "Dropbox App Root Path"
+    "MASTER_PASSWORD" -> "Master Password"
+    "MASTER_PASSWORD_VERIFY" -> "Verify Master Password"
+    "GENERATE_LOCAL_INFO" -> "Generate Local Info"
     else -> stringKey
   }
 }

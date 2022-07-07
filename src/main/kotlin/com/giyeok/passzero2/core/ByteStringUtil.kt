@@ -58,3 +58,14 @@ fun ByteString.xor(other: ByteString): ByteString {
   check(this.size() == other.size())
   return ByteString.copyFrom(this.zip(other).map { (a, b) -> (a.toInt() xor b.toInt()).toByte() }.toByteArray())
 }
+
+fun ByteString.toHexString(): String {
+  val chars = "0123456789abcdef"
+  val builder = StringBuilder()
+  (0 until this.size()).map { i ->
+    val v = this.byteAt(i).toInt() and 0xff
+    builder.append(chars[v / 16])
+    builder.append(chars[v % 16])
+  }
+  return builder.toString()
+}

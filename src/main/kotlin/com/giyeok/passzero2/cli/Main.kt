@@ -28,11 +28,19 @@ object Main {
       console?.readPassword()?.concatToString() ?: readLine()!!
     }
 
-    val localInfo = LocalInfoWithRevision.decode(masterPassword, ByteString.readFrom(File(localInfoPath).inputStream()))
+    val localInfo = LocalInfoWithRevision.decode(
+      masterPassword,
+      ByteString.readFrom(File(localInfoPath).inputStream())
+    )
     val cryptSession = CryptSession.from(localInfo.localInfoWithRevision, masterPassword)
     val okHttpClient = OkHttpClient()
-    val dropboxSession =
-      DropboxSession(cryptSession, localInfo.localInfoWithRevision.localInfo.storageProfile.dropbox, okHttpClient)
+    val dropboxSession = DropboxSession(
+      cryptSession,
+      localInfo.localInfoWithRevision.localInfo.storageProfile.dropbox,
+      okHttpClient
+    ) { newToken ->
+      // TODO update localInfo
+    }
 
     val config = dropboxSession.getConfig()
 
@@ -47,7 +55,8 @@ object Main {
       println("Loading all entries of $currentDirectory...")
     }
     val entryList =
-      (entryList0 ?: dropboxSession.createEntryListCache(currentDirectory)).entriesList.sortedBy { it.info.name }
+      (entryList0
+        ?: dropboxSession.createEntryListCache(currentDirectory)).entriesList.sortedBy { it.info.name }
 
     while (true) {
       print("> ")

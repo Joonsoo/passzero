@@ -30,11 +30,18 @@ class DropboxSession(
     cryptSession: CryptSession,
     profile: LocalInfoProto.DropboxStorageProfile,
     okHttpClient: OkHttpClient,
-    gson: Gson = defaultGson()
+    gson: Gson = defaultGson(),
+    accessTokenUpdateListener: (suspend (DropboxToken) -> Unit)?
   ) : this(
     cryptSession,
     profile.appRootPath,
-    DropboxClientImpl(profile.accessToken, okHttpClient, gson),
+    DropboxClientImpl(
+      profile.appKey,
+      DropboxToken(profile.accessToken, profile.refreshToken),
+      okHttpClient,
+      gson,
+      accessTokenUpdateListener
+    ),
     gson
   )
 
@@ -303,7 +310,6 @@ class DropboxSession(
 
   private suspend fun writeCache(directory: String, cache: StorageProto.EntryListCache) {
     writeEncoded(entryCachePath(directory), cache.toByteString())
-    println("newCache ${cache.entriesCount}")
     cacheFlow.emit(cache)
   }
 
@@ -335,7 +341,6 @@ class DropboxSession(
 
   override suspend fun deleteEntryListCache(directory: String) {
     client.deleteFile(entryCachePath(directory))
-    println("newCache null")
     cacheFlow.emit(null)
   }
 

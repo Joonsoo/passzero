@@ -106,7 +106,15 @@ class MasterPasswordView(
         cryptSession,
         localInfo.localInfoWithRevision.localInfo.storageProfile.dropbox,
         okHttpClient
-      )
+      ) { newToken ->
+        // update local info
+        println("Dropbox token updated")
+        val newLocalInfo = localInfo.localInfoWithRevision.localInfo.toBuilder()
+        newLocalInfo.storageProfileBuilder.dropboxBuilder.accessToken = newToken.accessToken
+        newLocalInfo.storageProfileBuilder.dropboxBuilder.refreshToken = newToken.refreshToken
+        val newLiwr = localInfo.localInfoWithRevision.copy(localInfo = newLocalInfo.build())
+        config.localInfoFile.writeBytes(newLiwr.encode(password).toByteArray())
+      }
     } catch (e: Exception) {
       SwingUtilities.invokeLater {
         JOptionPane.showMessageDialog(null, e.message)

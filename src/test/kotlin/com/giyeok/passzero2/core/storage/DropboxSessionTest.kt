@@ -19,8 +19,11 @@ class DropboxSessionTest {
     )
     val cryptSession = CryptSession.from(localInfo.localInfoWithRevision, pw)
     val okHttpClient = OkHttpClient()
-    val dropboxSession =
-      DropboxSession(cryptSession, localInfo.localInfoWithRevision.localInfo.storageProfile.dropbox, okHttpClient)
+    val dropboxSession = DropboxSession(
+      cryptSession,
+      localInfo.localInfoWithRevision.localInfo.storageProfile.dropbox,
+      okHttpClient
+    ) { }
 
     val config = dropboxSession.getConfig()
     val newEntry = dropboxSession.createEntry(
