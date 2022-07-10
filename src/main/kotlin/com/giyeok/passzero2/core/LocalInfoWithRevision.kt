@@ -56,7 +56,7 @@ data class LocalInfoWithRevision(
   fun encode(password: String, timestamp: Timestamp): ByteString {
     val buf = ByteArrayOutputStream()
 
-    buf.writeBytes("GYPZ".toByteArray())
+    buf.writeBytes(ByteString.copyFromUtf8("GYPZ"))
     buf.write(0)
     buf.write(2)
     buf.writeLong(Timestamps.toMillis(timestamp))

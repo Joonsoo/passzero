@@ -1,0 +1,91 @@
+import maven
+import jvm
+import java
+import bibix
+from bibix.plugins() import ktjvm
+from bibix.plugins() import protobuf
+
+jparserVersion = "0.5"
+arg ktjvm.kotlinVersion as kotlinVersion: string = "1.7.0"
+kotlinCoroutineVersion = "1.6.3"
+gsonVersion = "2.8.7"
+okhttpVersion = "4.10.0"
+protobufVersion = "3.21.2"
+grpcVersion = "1.47.0"
+grpcKtVersion = "1.3.0"
+junit5Version = "5.8.2"
+floggerVersion = "0.7.4"
+passzeroVersion = "0.2.0"
+
+namespace proto {
+  schema = protobuf.schema(
+    srcs = glob("src/main/proto/*.proto"),
+  )
+
+  javaprotosrc = protobuf.java(schema)
+  javalib = java.library(
+    srcs = javaprotosrc,
+    deps = [
+      maven.dep("com.google.protobuf", "protobuf-java", protobufVersion),
+    ],
+  )
+  kotlinprotosrc = protobuf.kotlin(schema)
+  kotlinlib = ktjvm.library(
+    srcs = kotlinprotosrc,
+    deps = [
+      javalib,
+      maven.dep("com.google.protobuf", "protobuf-kotlin", protobufVersion),
+      maven.dep("org.jetbrains.kotlin", "kotlin-stdlib-jdk8", kotlinVersion),
+      maven.dep("org.jetbrains.kotlinx", "kotlinx-coroutines-core", kotlinCoroutineVersion),
+      maven.dep("org.jetbrains.kotlinx", "kotlinx-coroutines-jdk8", kotlinCoroutineVersion),
+    ],
+    optIns = ["kotlin.RequiresOptIn"]
+  )
+}
+
+core = ktjvm.library(
+  srcs = glob("src/main/kotlin/**/*.kt"),
+  deps = [
+    maven.dep("org.jetbrains.kotlin", "kotlin-stdlib-jdk8", kotlinVersion),
+    maven.dep("org.jetbrains.kotlinx", "kotlinx-coroutines-core", kotlinCoroutineVersion),
+    maven.dep("org.jetbrains.kotlinx", "kotlinx-coroutines-jdk8", kotlinCoroutineVersion),
+
+    // https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp
+    maven.dep("com.squareup.okhttp3", "okhttp", okhttpVersion),
+
+    // https://mvnrepository.com/artifact/com.google.code.gson/gson
+    maven.dep("com.google.code.gson", "gson", gsonVersion),
+
+    // *** Protobuf ***
+    // https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java
+    maven.dep("com.google.protobuf", "protobuf-java", protobufVersion),
+
+    // https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java-util
+    maven.dep("com.google.protobuf", "protobuf-java-util", protobufVersion),
+
+    // https://mvnrepository.com/artifact/com.dorkbox/SystemTray
+    maven.dep("com.dorkbox", "SystemTray", "4.1"),
+
+    maven.dep("org.jetbrains.kotlinx", "kotlinx-cli", "0.3.4"),
+
+    maven.dep("com.google.flogger", "flogger", floggerVersion),
+    maven.dep("com.google.flogger", "flogger-system-backend", floggerVersion)
+  ]
+)
+
+gui = core
+
+cli = core
+
+
+guiUberJar = jvm.executableUberJar(
+  deps = [gui],
+  mainClass = "com.giyeok.passzero2.gui.Main",
+  jarFileName = "passzero-$passzeroVersion.jar"
+)
+
+action runCli(args) = jvm.run(
+  deps = [cli],
+  mainClass = "com.giyeok.passzero2.cli.Main",
+  args = args,
+)

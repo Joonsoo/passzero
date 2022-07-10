@@ -54,10 +54,10 @@ dependencies {
 
     // *** Protobuf ***
     // https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java
-    compile group: 'com.google.protobuf', name: 'protobuf-java', version: protobufVersion
+    implementation group: 'com.google.protobuf', name: 'protobuf-java', version: protobufVersion
 
     // https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java-util
-    compile group: 'com.google.protobuf', name: 'protobuf-java-util', version: protobufVersion
+    implementation group: 'com.google.protobuf', name: 'protobuf-java-util', version: protobufVersion
 
     // https://mvnrepository.com/artifact/com.dorkbox/SystemTray
     implementation group: 'com.dorkbox', name: 'SystemTray', version: '4.1'
@@ -68,8 +68,8 @@ dependencies {
     implementation group: 'com.google.flogger', name: 'flogger-system-backend', version: floggerVersion
 
     // ** Testing **
-    testCompile group: 'org.jetbrains.kotlin', name: 'kotlin-test', version: kotlinVersion
-    testCompile group: 'org.jetbrains.kotlin', name: 'kotlin-test-junit5', version: kotlinVersion
+    testImplementation group: 'org.jetbrains.kotlin', name: 'kotlin-test', version: kotlinVersion
+    testImplementation group: 'org.jetbrains.kotlin', name: 'kotlin-test-junit5', version: kotlinVersion
     testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: junit5Version
     testRuntimeOnly group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: junit5Version
     testImplementation 'com.nhaarman.mockitokotlin2:mockito-kotlin:2.2.0'
@@ -96,7 +96,7 @@ protobuf {
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "18"
     }
 }
 

@@ -128,7 +128,7 @@ data class EntryListViewState(
       _filterText = value
       SwingUtilities.invokeLater {
         filteredEntries.clear()
-        filteredEntries.addAll(entryList.filter { isPassingFilter(it) })
+        entryList.filter { isPassingFilter(it) }.forEach(filteredEntries::addElement)
       }
 //        var allEntryIdx = entryList.size - 1
 //        (0 until filteredEntries.size).reversed().forEach { idx ->

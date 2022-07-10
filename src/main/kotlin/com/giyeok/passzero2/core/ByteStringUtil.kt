@@ -30,11 +30,20 @@ fun ByteArrayInputStream.readLong(): Long {
   val b5 = read().toLong()
   val b6 = read().toLong()
   val b7 = read().toLong()
-  return ((b0 and 0xff) shl 56) or ((b1 and 0xff) shl 48) or ((b2 and 0xff) shl 40) or ((b3 and 0xff) shl 32) or
-    ((b4 and 0xff) shl 24) or ((b5 and 0xff) shl 16) or ((b6 and 0xff) shl 8) or (b7 and 0xff)
+  return ((b0 and 0xff) shl 56) or ((b1 and 0xff) shl 48) or
+    ((b2 and 0xff) shl 40) or ((b3 and 0xff) shl 32) or
+    ((b4 and 0xff) shl 24) or ((b5 and 0xff) shl 16) or
+    ((b6 and 0xff) shl 8) or (b7 and 0xff)
 }
 
-fun ByteArrayInputStream.readBytes(length: Int): ByteString = ByteString.copyFrom(this.readNBytes(length))
+fun ByteArrayInputStream.readBytes(length: Int): ByteString {
+  val bytes = ByteArray(length)
+  val readBytes = this.read(bytes, 0, length)
+  if (readBytes != length) {
+    throw IllegalStateException("Unexpected end of file")
+  }
+  return ByteString.copyFrom(bytes)
+}
 
 fun ByteArrayInputStream.readRest(): ByteString = ByteString.readFrom(this)
 
@@ -56,7 +65,8 @@ fun ByteArrayOutputStream.writeBytes(bytes: ByteString) {
 
 fun ByteString.xor(other: ByteString): ByteString {
   check(this.size() == other.size())
-  return ByteString.copyFrom(this.zip(other).map { (a, b) -> (a.toInt() xor b.toInt()).toByte() }.toByteArray())
+  return ByteString.copyFrom(this.zip(other).map { (a, b) -> (a.toInt() xor b.toInt()).toByte() }
+    .toByteArray())
 }
 
 fun ByteString.toHexString(): String {
