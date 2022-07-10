@@ -44,8 +44,12 @@ namespace proto {
 }
 
 core = ktjvm.library(
-  srcs = glob("src/main/kotlin/**/*.kt"),
+  srcs = glob("src/main/kotlin/com/giyeok/passzero2/core/*.kt") +
+         glob("src/main/kotlin/com/giyeok/passzero2/core/**/*.kt"),
   deps = [
+    proto.javalib,
+    proto.kotlinlib,
+
     maven.dep("org.jetbrains.kotlin", "kotlin-stdlib-jdk8", kotlinVersion),
     maven.dep("org.jetbrains.kotlinx", "kotlinx-coroutines-core", kotlinCoroutineVersion),
     maven.dep("org.jetbrains.kotlinx", "kotlinx-coroutines-jdk8", kotlinCoroutineVersion),
@@ -63,19 +67,46 @@ core = ktjvm.library(
     // https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java-util
     maven.dep("com.google.protobuf", "protobuf-java-util", protobufVersion),
 
-    // https://mvnrepository.com/artifact/com.dorkbox/SystemTray
-    maven.dep("com.dorkbox", "SystemTray", "4.1"),
-
-    maven.dep("org.jetbrains.kotlinx", "kotlinx-cli", "0.3.4"),
-
     maven.dep("com.google.flogger", "flogger", floggerVersion),
     maven.dep("com.google.flogger", "flogger-system-backend", floggerVersion)
   ]
 )
 
-gui = core
+gui = ktjvm.library(
+  srcs = glob("src/main/kotlin/com/giyeok/passzero2/gui/*.kt") +
+         glob("src/main/kotlin/com/giyeok/passzero2/gui/**/*.kt"),
+  deps = [
+    core,
+    maven.dep("org.jetbrains.kotlinx", "kotlinx-cli-jvm", "0.3.5"),
 
-cli = core
+    // https://mvnrepository.com/artifact/com.dorkbox/SystemTray
+    maven.dep("com.dorkbox", "SystemTray", "4.1"),
+    maven.dep("com.dorkbox", "Executor", "3.1"),
+    maven.dep("com.dorkbox", "SwtJavaFx", "1.1"),
+    maven.dep("com.dorkbox", "Utilities", "1.9"),
+    maven.dep("com.dorkbox", "Updates", "1.0"),
+    maven.dep("com.dorkbox", "PropertyLoader", "1.0"),
+    maven.dep("org.javassist", "javassist", "3.27.0-GA"),
+    maven.dep("net.java.dev.jna", "jna", "5.8.0"),
+    maven.dep("net.java.dev.jna", "jna-platform", "5.8.0"),
+    maven.dep("org.slf4j", "slf4j-api", "1.7.36"),
+    maven.dep("ch.qos.logback", "logback-classic", "1.2.3"),
+  ],
+//  resources = [
+//    "src/main/resources/locked.png",
+//    "src/main/resources/unlocked.png",
+//    "src/main/resources/icons8-info-30.png",
+//    "src/main/resources/icons8-refresh-30.png",
+//  ]
+)
+
+cli = ktjvm.library(
+  srcs = glob("src/main/kotlin/com/giyeok/passzero2/cli/*.kt"),
+  deps = [
+    core,
+    maven.dep("org.jetbrains.kotlinx", "kotlinx-cli-jvm", "0.3.5"),
+  ]
+)
 
 
 guiUberJar = jvm.executableUberJar(
