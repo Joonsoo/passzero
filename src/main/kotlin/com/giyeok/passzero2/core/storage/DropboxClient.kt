@@ -60,9 +60,9 @@ class DropboxClientImpl(
       this
     }
 
-  private suspend fun <T> sendRequestRaw(request: Request, responseHandler: (Response) -> T): T =
+  private suspend inline fun sendRequestRaw(request: Request): Response =
     try {
-      okHttpClient.newCall(request).await().use { responseHandler(it) }
+      okHttpClient.newCall(request).await()
     } catch (e: UnsuccessfulResponseException) {
       if (e.responseBody != null) {
         throw e.toDropboxError()
@@ -70,39 +70,40 @@ class DropboxClientImpl(
       throw e
     }
 
-  suspend fun refreshToken(): DropboxToken {
-    data class RefreshTokenResponse(
-      val accessToken: String,
-      val tokenType: String,
-      val expiresIn: Int
-    )
+  data class RefreshTokenResponse(
+    val accessToken: String,
+    val tokenType: String,
+    val expiresIn: Int
+  )
 
+  suspend fun refreshToken(): DropboxToken {
     val refreshToken = tokenFlow.value.refreshToken
-    val request = Request.Builder()
-      .url("https://api.dropboxapi.com/oauth2/token")
-      .post(
-        FormBody.Builder()
-          .addEncoded("grant_type", "refresh_token")
-          .addEncoded("client_id", appKey)
-          .addEncoded("refresh_token", tokenFlow.value.refreshToken)
-          .build()
-      ).build()
-    val response = okHttpClient.newCall(request).await()
+    val response = sendRequestRaw(
+      Request.Builder()
+        .url("https://api.dropboxapi.com/oauth2/token")
+        .post(
+          FormBody.Builder()
+            .addEncoded("grant_type", "refresh_token")
+            .addEncoded("client_id", appKey)
+            .addEncoded("refresh_token", tokenFlow.value.refreshToken)
+            .build()
+        ).build()
+    )
     val responseBody = response.body!!.jsonTo<RefreshTokenResponse>()
 
     return DropboxToken(responseBody.accessToken, refreshToken)
   }
 
-  private suspend fun <T> sendRequest(request: Request, responseHandler: (Response) -> T): T =
+  private suspend inline fun sendRequest(crossinline requestBuilder: () -> Request): Response =
     requestMutex.withLock {
       try {
-        sendRequestRaw(request, responseHandler)
+        sendRequestRaw(requestBuilder())
       } catch (e: DropboxError) {
         if (e.detail.errorSummary.startsWith("expired_access_token/")) {
           val newToken = refreshToken()
           accessTokenUpdateListener?.invoke(newToken)
           tokenFlow.tryEmit(newToken)
-          sendRequestRaw(request, responseHandler)
+          sendRequestRaw(requestBuilder())
         } else {
           throw e
         }
@@ -126,18 +127,18 @@ class DropboxClientImpl(
   )
 
   private suspend fun listFolder(req: ListFolderReq): ListFolderRes {
-    return sendRequest(
+    return sendRequest {
       Request.Builder()
         .url("https://api.dropboxapi.com/2/files/list_folder")
         .addApiKeyHeader()
         .addHeader("Content-Type", "application/json")
         .post(gson.toJson(req).toRequestBody(applicationJson))
         .build()
-    ) { response -> response.body!!.jsonTo<ListFolderRes>() }
+    }.body!!.jsonTo<ListFolderRes>()
   }
 
   private suspend fun listFolderContinue(cursor: String): ListFolderRes {
-    return sendRequest(
+    return sendRequest {
       Request.Builder()
         .url("https://api.dropboxapi.com/2/files/list_folder/continue")
         .addApiKeyHeader()
@@ -146,20 +147,21 @@ class DropboxClientImpl(
           gson.toJson(ListFolderContinueReq(cursor))
             .toRequestBody(applicationJson)
         ).build()
-    ) { response -> response.body!!.jsonTo<ListFolderRes>() }
+    }.body!!.jsonTo<ListFolderRes>()
   }
 
   data class UploadReq(val path: String, val mode: String)
 
   override suspend fun writeRaw(path: String, bytes: ByteString) {
-    sendRequest(
+    val response = sendRequest {
       Request.Builder()
         .url("https://content.dropboxapi.com/2/files/upload")
         .addApiKeyHeader()
         .addHeader("Dropbox-API-Arg", gson.toJson(UploadReq(path, "overwrite")))
         .addHeader("Content-Type", "application/octet-stream")
         .post(bytes.toByteArray().toRequestBody()).build()
-    ) { it.close() }
+    }
+    response.close()
   }
 
 
@@ -186,25 +188,27 @@ class DropboxClientImpl(
   data class DownloadReq(val path: String)
 
   override suspend fun readRaw(path: String): ByteString {
-    return sendRequest(
+    val response = sendRequest {
       Request.Builder()
         .url("https://content.dropboxapi.com/2/files/download")
         .addApiKeyHeader()
         .addHeader("Dropbox-API-Arg", gson.toJson(DownloadReq(path))).build()
-    ) { response -> ByteString.readFrom(response.body!!.byteStream()) }
+    }
+    return ByteString.readFrom(response.body!!.byteStream())
   }
 
   data class DeleteFileReq(val path: String)
 
   override suspend fun deleteFile(path: String) {
-    sendRequest(
+    val response = sendRequest {
       Request.Builder()
         .url("https://api.dropboxapi.com/2/files/delete_v2")
         .addApiKeyHeader()
         .addHeader("Content-Type", "application/json")
         .post(gson.toJson(DeleteFileReq(path)).toRequestBody(applicationJson))
         .build()
-    ) { it.close() }
+    }
+    response.close()
   }
 
   override suspend fun deleteDirectory(path: String) {
@@ -214,13 +218,14 @@ class DropboxClientImpl(
   data class CreateFolderReq(val path: String, val autorename: Boolean)
 
   override suspend fun createFolder(path: String) {
-    sendRequest(
+    val response = sendRequest {
       Request.Builder()
         .url("https://api.dropboxapi.com/2/files/create_folder_v2")
         .addApiKeyHeader()
         .addHeader("Content-Type", "application/json")
         .post(gson.toJson(CreateFolderReq(path, false)).toRequestBody(applicationJson))
         .build()
-    ) { it.close() }
+    }
+    response.close()
   }
 }
